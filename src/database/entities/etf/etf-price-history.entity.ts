@@ -4,10 +4,12 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { EtfInfo } from './etf-info.entity';
 
 @Entity('etf_price_history')
+@Unique(['etf_info_id', 'date'])
 export class EtfPriceHistory {
   @PrimaryGeneratedColumn()
   id: number;

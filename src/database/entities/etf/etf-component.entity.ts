@@ -5,11 +5,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { EtfInfo } from './etf-info.entity';
 import { StockInfo } from '../stock/stock-info.entity';
 
 @Entity('etf_component')
+@Unique(['etf_info_id', 'stock_info_id'])
 export class EtfComponent {
   @PrimaryGeneratedColumn()
   id: number;

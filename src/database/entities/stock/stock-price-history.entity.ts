@@ -4,10 +4,12 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { StockInfo } from './stock-info.entity';
 
 @Entity('stock_price_history')
+@Unique(['stock_info_id', 'date'])
 export class StockPriceHistory {
   @PrimaryGeneratedColumn()
   id: number;

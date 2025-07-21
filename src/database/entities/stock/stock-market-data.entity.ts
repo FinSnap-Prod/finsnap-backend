@@ -5,10 +5,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { StockInfo } from './stock-info.entity';
 
 @Entity('stock_market_data')
+@Unique(['stock_info_id'])
 export class StockMarketData {
   @PrimaryGeneratedColumn()
   id: number;
