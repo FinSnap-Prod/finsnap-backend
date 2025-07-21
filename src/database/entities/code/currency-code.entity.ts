@@ -7,4 +7,7 @@ export class CurrencyCode {
 
   @Column({ type: 'varchar', length: 10 })
   currency_code: string;
+
+  @Column({ type: 'varchar', length: 10 })
+  currency_name: string;
 }

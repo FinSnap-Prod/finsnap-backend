@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { CurrencyCode } from '../\bcode/currency-code.entity';
 
 @Entity('stock_info')
+@Unique(['ticker'])
 export class StockInfo {
   @PrimaryGeneratedColumn()
   id: number;
@@ -29,7 +31,7 @@ export class StockInfo {
   currency_code_id: number;
 
   @ManyToOne(() => CurrencyCode)
-  @JoinColumn({ name: 'curreny_code_id' })
+  @JoinColumn({ name: 'currency_code_id' })
   currency_code: CurrencyCode;
 
   @CreateDateColumn({ name: 'created_at' })

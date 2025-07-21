@@ -5,10 +5,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { EtfInfo } from './etf-info.entity';
 
 @Entity('etf_market_data')
+@Unique(['etf_info_id'])
 export class EtfMarketData {
   @PrimaryGeneratedColumn()
   id: number;
@@ -31,9 +33,6 @@ export class EtfMarketData {
 
   @Column({ type: 'bigint' })
   market_cap: string;
-
-  @Column({ type: 'boolean' })
-  trht_yn: boolean;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
