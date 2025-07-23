@@ -40,5 +40,5 @@ for m in markets:
     temp = get_market_df(m)
     all_df = pd.concat([all_df, temp], axis=0)
 
-all_df.to_excel('us_stock_etf_code.xlsx', index=False)
+all_df.to_excel('overseas-master.xlsx', index=False)
 print("Done! 미국 3개 거래소 Symbol, Korea name, English name, Security type만 추출 완료.")
