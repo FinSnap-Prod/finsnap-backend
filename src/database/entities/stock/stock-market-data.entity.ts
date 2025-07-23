@@ -40,11 +40,11 @@ export class StockMarketData {
   @Column({ type: 'numeric', precision: 8, scale: 2 })
   pbr: string;
 
-  @Column({ type: 'numeric', precision: 8, scale: 2 })
-  roa: string;
+  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true })
+  roa: string | null;
 
-  @Column({ type: 'numeric', precision: 8, scale: 2 })
-  roe: string;
+  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true })
+  roe: string | null;
 
   @Column({ type: 'numeric', precision: 8, scale: 2 })
   eps: string;
