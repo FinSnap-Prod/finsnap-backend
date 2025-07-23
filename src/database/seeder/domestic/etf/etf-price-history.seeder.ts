@@ -1,8 +1,8 @@
 import { DataSource } from 'typeorm';
-import { getKisAccessToken } from '../token/kis-token';
-import { EtfInfo } from '../../entities/etf/etf-info.entity';
+import { getKisAccessToken } from '../../token/kis-token';
+import { EtfInfo } from '../../../entities/etf/etf-info.entity';
 import axios from 'axios';
-import { EtfPriceHistory } from '../../entities/etf/etf-price-history.entity';
+import { EtfPriceHistory } from '../../../entities/etf/etf-price-history.entity';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()

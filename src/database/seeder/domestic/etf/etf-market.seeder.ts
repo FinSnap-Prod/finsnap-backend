@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { DataSource } from 'typeorm';
-import { getKisAccessToken } from '../token/kis-token';
-import { EtfInfo } from '../../entities/etf/etf-info.entity';
-import { EtfMarketData } from '../../entities/etf/etf-market-data.entity';
+import { getKisAccessToken } from '../../token/kis-token';
+import { EtfInfo } from '../../../entities/etf/etf-info.entity';
+import { EtfMarketData } from '../../../entities/etf/etf-market-data.entity';
 
 @Injectable()
 export class EtfMarketSeeder {

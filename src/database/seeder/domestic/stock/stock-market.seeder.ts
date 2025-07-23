@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { DataSource } from 'typeorm';
-import { StockInfo } from '../../entities/stock/stock-info.entity';
-import { StockMarketData } from '../../entities/stock/stock-market-data.entity';
-import { getKisAccessToken } from '../token/kis-token';
+import { StockInfo } from '../../../entities/stock/stock-info.entity';
+import { StockMarketData } from '../../../entities/stock/stock-market-data.entity';
+import { getKisAccessToken } from '../../token/kis-token';
 
 @Injectable()
 export class StockMarketSeeder {

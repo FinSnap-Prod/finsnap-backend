@@ -3,7 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { DepositType } from '../code/deposit-type.entity';
 
 @Entity('deposit_info')
 export class DepositInfo {
@@ -21,6 +24,13 @@ export class DepositInfo {
 
   @Column({ type: 'varchar', length: 100 })
   bank_code: string;
+
+  @Column({ type: 'int' })
+  deposit_type_id: number;
+
+  @ManyToOne(() => DepositType)
+  @JoinColumn({ name: 'deposit_type_id' })
+  deposit_type: DepositType;
 
   @Column({ type: 'varchar', length: 20 })
   report_month: string;

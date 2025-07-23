@@ -2,11 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../../app.module';
 import { KospiMasterSeeder } from './kospi-master.seeder';
 import { KosdaqMasterSeeder } from './kosdaq-master.seeder';
-import { StockMarketSeeder } from './stock-market.seeder';
-import { EtfMarketSeeder } from './etf-market.seeder';
-import { EtfPriceHistorySeeder } from './etf-price-history.seeder';
-import { StockPriceHistorySeeder } from './stock-price-history.seeder';
-import { EtfComponentSeeder } from './etf-component.seeder';
+import { StockMarketSeeder } from './stock/stock-market.seeder';
+import { EtfMarketSeeder } from './etf/etf-market.seeder';
+import { EtfPriceHistorySeeder } from './etf/etf-price-history.seeder';
+import { StockPriceHistorySeeder } from './stock/stock-price-history.seeder';
+import { EtfComponentSeeder } from './etf/etf-component.seeder';
 
 async function bootstrap() {
   console.time('Seeding finished in');
