@@ -19,7 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "domestic-master": "ts-node src/database/seeder/domestic/run-domestic-master.ts",
-    "overseas-master": "ts-node src/database/seeder/overseas/overseas-master-run.ts"
+    "overseas-master": "ts-node src/database/seeder/overseas/run-overseas-master.ts",
+    "all-seeders": "ts-node src/database/seeder/run-all-seeders.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
