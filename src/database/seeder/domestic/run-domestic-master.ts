@@ -7,6 +7,8 @@ import { EtfMarketSeeder } from './etf/etf-market.seeder';
 import { EtfPriceHistorySeeder } from './etf/etf-price-history.seeder';
 import { StockPriceHistorySeeder } from './stock/stock-price-history.seeder';
 import { EtfComponentSeeder } from './etf/etf-component.seeder';
+import { DepositMasterSeeder } from './deposit/deposit-master.seeder';
+import { SavingMasterSeeder } from './deposit/saving-master.seeder';
 
 async function bootstrap() {
   console.time('Seeding finished in');
@@ -18,6 +20,9 @@ async function bootstrap() {
   const stockPriceHistorySeeder = app.get(StockPriceHistorySeeder); // StockInfo -> Kis-API -> StockPriceHisotry 적재
   const etfPriceHistorySeeder = app.get(EtfPriceHistorySeeder); // EtfInfo -> Kis-API -> EtfPriceHistory 적재
   const etfComponentSeeder = app.get(EtfComponentSeeder); // EtfInfo -> Kis-API -> find(StockInfo) -> EtfComponent 적재
+
+  const depositMasterSeeder = app.get(DepositMasterSeeder);
+  const savingMasterSeeder = app.get(SavingMasterSeeder);
 
   console.log('--- Domestic Seeder Start ---');
 
@@ -40,6 +45,9 @@ async function bootstrap() {
   console.log('Running etfcomponent seeders in parallel...');
   await etfComponentSeeder.run();
   console.log('✅ etfcomponent data seeders finished.');
+
+  await depositMasterSeeder.run();
+  await savingMasterSeeder.run();
 
   await app.close();
   console.log('--- Domestic Seeder End ---');
