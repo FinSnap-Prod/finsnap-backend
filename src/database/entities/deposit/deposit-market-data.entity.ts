@@ -5,11 +5,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { DepositInfo } from './deposit-info.entity';
-import { InterestType } from '../\bcode/interest-type.entity';
+import { InterestType } from '../code/interest-type.entity';
 
 @Entity('deposit_market_data')
+@Unique(['deposit_info_id', 'period'])
 export class DepositMarketData {
   @PrimaryGeneratedColumn()
   id: number;

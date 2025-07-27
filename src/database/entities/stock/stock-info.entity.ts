@@ -7,7 +7,7 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { CurrencyCode } from '../\bcode/currency-code.entity';
+import { CurrencyCode } from '../code/currency-code.entity';
 
 @Entity('stock_info')
 @Unique(['ticker'])

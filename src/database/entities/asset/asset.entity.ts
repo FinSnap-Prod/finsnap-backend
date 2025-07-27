@@ -7,8 +7,8 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { AssetType } from '../code/asset-type.entity';
-import { MarketRegion } from '../code/market-region.entity';
+import { AssetType } from '../code/asset-type.entity';
+import { MarketRegion } from '../code/market-region.entity';
 
 @Entity('asset')
 export class Asset {

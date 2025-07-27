@@ -6,7 +6,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { UserAsset } from './user-asset.entity';
-import { AssetHistoryType } from '../code/asset-history-type.entity';
+import { AssetHistoryType } from '../code/asset-history-type.entity';
 
 @Entity('asset_history')
 export class AssetHistory {
