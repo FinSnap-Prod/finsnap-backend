@@ -4,10 +4,12 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { CryptoInfo } from './crypto-info.entity';
 
 @Entity('crypto_price_history')
+@Unique(['crypto_info_id', 'date'])
 export class CryptoPriceHistory {
   @PrimaryGeneratedColumn()
   id: number;
