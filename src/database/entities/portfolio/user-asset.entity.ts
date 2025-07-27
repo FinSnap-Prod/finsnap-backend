@@ -9,8 +9,8 @@ import {
 } from 'typeorm';
 import { Category } from './category.entity';
 import { Asset } from '../asset/asset.entity';
-import { Institution } from '../code/institution.entity';
-import { CurrencyCode } from '../code/currency-code.entity';
+import { Institution } from '../code/institution.entity';
+import { CurrencyCode } from '../code/currency-code.entity';
 
 @Entity('user_asset')
 export class UserAsset {

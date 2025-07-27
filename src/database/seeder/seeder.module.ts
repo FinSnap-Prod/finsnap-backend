@@ -11,12 +11,27 @@ import { OverseasStockMarketSeeder } from './overseas/stock/stock-market.seeder'
 import { OverseasEtfMarketSeeder } from './overseas/etf/eft-market.seeder';
 import { OverseasStockPriceHistorySeeder } from './overseas/stock/stock-price.history.seeder';
 import { OverseasEtfPriceHistorySeeder } from './overseas/etf/etf-price-history.seeder';
+import { DepositMasterSeeder } from './domestic/deposit/deposit-master.seeder';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EtfInfo } from '../entities/etf/etf-info.entity';
 import { StockInfo } from '../entities/stock/stock-info.entity';
+import { DepositInfo } from '../entities/deposit/deposit-info.entity';
+import { DepositType } from '../entities/deposit/deposit-type.entity';
+import { DepositMarketData } from '../entities/deposit/deposit-market-data.entity';
+import { InterestType } from '../entities/code/interest-type.entity';
+import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([StockInfo, EtfInfo])],
+  imports: [
+    TypeOrmModule.forFeature([
+      StockInfo,
+      EtfInfo,
+      DepositInfo,
+      DepositType,
+      DepositMarketData,
+      InterestType,
+    ]),
+  ],
   providers: [
     KospiMasterSeeder,
     KosdaqMasterSeeder,
@@ -30,6 +45,8 @@ import { StockInfo } from '../entities/stock/stock-info.entity';
     OverseasEtfMarketSeeder,
     OverseasStockPriceHistorySeeder,
     OverseasEtfPriceHistorySeeder,
+    DepositMasterSeeder,
+    SavingMasterSeeder,
   ],
   exports: [
     KospiMasterSeeder,
@@ -44,6 +61,8 @@ import { StockInfo } from '../entities/stock/stock-info.entity';
     OverseasEtfMarketSeeder,
     OverseasStockPriceHistorySeeder,
     OverseasEtfPriceHistorySeeder,
+    DepositMasterSeeder,
+    SavingMasterSeeder,
   ],
 })
 export class SeederModule {}

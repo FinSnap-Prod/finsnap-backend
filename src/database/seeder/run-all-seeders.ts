@@ -12,6 +12,8 @@ import { OverseasStockMarketSeeder } from './overseas/stock/stock-market.seeder'
 import { OverseasEtfMarketSeeder } from './overseas/etf/eft-market.seeder';
 import { OverseasStockPriceHistorySeeder } from './overseas/stock/stock-price.history.seeder';
 import { OverseasEtfPriceHistorySeeder } from './overseas/etf/etf-price-history.seeder';
+import { DepositMasterSeeder } from './domestic/deposit/deposit-master.seeder';
+import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
 
 // 지연 함수 추가
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,6 +39,10 @@ async function bootstrap() {
     OverseasStockPriceHistorySeeder,
   );
   const overseasEtfPriceHistorySeeder = app.get(OverseasEtfPriceHistorySeeder);
+
+  // Domestic Deposit Seeders
+  const depositMasterSeeder = app.get(DepositMasterSeeder);
+  const savingMasterSeeder = app.get(SavingMasterSeeder);
 
   console.log('--- All Seeders Start (Sequential Processing) ---');
 
@@ -102,6 +108,12 @@ async function bootstrap() {
   console.log('4️⃣ Running ETF component seeders...');
   await etfComponentSeeder.run();
   console.log('✅ ETF component seeders finished.');
+
+  // 5. 예금 정보 적재
+  console.log('5️⃣ Running deposit master seeder...');
+  await depositMasterSeeder.run();
+  await savingMasterSeeder.run();
+  console.log('✅ Deposit master seeder finished.');
 
   await app.close();
   console.log('--- All Seeders End ---');

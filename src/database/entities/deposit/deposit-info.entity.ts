@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
-import { DepositType } from '../code/deposit-type.entity';
+import { DepositType } from './deposit-type.entity';
 
 @Entity('deposit_info')
+@Unique(['product_code'])
 export class DepositInfo {
   @PrimaryGeneratedColumn()
   id: number;
