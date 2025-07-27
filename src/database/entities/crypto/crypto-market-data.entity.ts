@@ -5,10 +5,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { CryptoInfo } from './crypto-info.entity';
 
 @Entity('crypto_market_data')
+@Unique(['crypto_info_id'])
 export class CryptoMarketData {
   @PrimaryGeneratedColumn()
   id: number;
