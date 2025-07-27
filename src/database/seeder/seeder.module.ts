@@ -20,6 +20,13 @@ import { DepositType } from '../entities/deposit/deposit-type.entity';
 import { DepositMarketData } from '../entities/deposit/deposit-market-data.entity';
 import { InterestType } from '../entities/code/interest-type.entity';
 import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
+import { CryptoMasterSeeder } from './domestic/crypto/crypto-master.seeder';
+import { CryptoMarketSeeder } from './domestic/crypto/crypto-market.seeder';
+import { CryptoInfo } from '../entities/crypto/crypto-info.entity';
+import { CryptoMarket } from '../entities/crypto/crypto-market.entity';
+import { CryptoMarketData } from '../entities/crypto/crypto-market-data.entity';
+import { CryptoPriceHistory } from '../entities/crypto/crypto-price-history.entity';
+import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history.seeder';
 
 @Module({
   imports: [
@@ -30,6 +37,10 @@ import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
       DepositType,
       DepositMarketData,
       InterestType,
+      CryptoInfo,
+      CryptoMarket,
+      CryptoMarketData,
+      CryptoPriceHistory,
     ]),
   ],
   providers: [
@@ -47,6 +58,9 @@ import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
     OverseasEtfPriceHistorySeeder,
     DepositMasterSeeder,
     SavingMasterSeeder,
+    CryptoMasterSeeder,
+    CryptoMarketSeeder,
+    CryptoPriceHistorySeeder,
   ],
   exports: [
     KospiMasterSeeder,
@@ -63,6 +77,9 @@ import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
     OverseasEtfPriceHistorySeeder,
     DepositMasterSeeder,
     SavingMasterSeeder,
+    CryptoMasterSeeder,
+    CryptoMarketSeeder,
+    CryptoPriceHistorySeeder,
   ],
 })
 export class SeederModule {}

@@ -14,6 +14,9 @@ import { OverseasStockPriceHistorySeeder } from './overseas/stock/stock-price.hi
 import { OverseasEtfPriceHistorySeeder } from './overseas/etf/etf-price-history.seeder';
 import { DepositMasterSeeder } from './domestic/deposit/deposit-master.seeder';
 import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
+import { CryptoMasterSeeder } from './domestic/crypto/crypto-master.seeder';
+import { CryptoMarketSeeder } from './domestic/crypto/crypto-market.seeder';
+import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history.seeder';
 
 // 지연 함수 추가
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +46,11 @@ async function bootstrap() {
   // Domestic Deposit Seeders
   const depositMasterSeeder = app.get(DepositMasterSeeder);
   const savingMasterSeeder = app.get(SavingMasterSeeder);
+
+  // Domestic Crypto Seeders
+  const cryptoMasterSeeder = app.get(CryptoMasterSeeder);
+  const cryptoMarketSeeder = app.get(CryptoMarketSeeder);
+  const cryptoPriceHistorySeeder = app.get(CryptoPriceHistorySeeder);
 
   console.log('--- All Seeders Start (Sequential Processing) ---');
 
@@ -114,6 +122,13 @@ async function bootstrap() {
   await depositMasterSeeder.run();
   await savingMasterSeeder.run();
   console.log('✅ Deposit master seeder finished.');
+
+  // 6. 암호화폐 정보 적재
+  console.log('6️⃣ Running crypto master seeder...');
+  await cryptoMasterSeeder.run();
+  await cryptoMarketSeeder.run();
+  await cryptoPriceHistorySeeder.run();
+  console.log('✅ Crypto master seeder finished.');
 
   await app.close();
   console.log('--- All Seeders End ---');
