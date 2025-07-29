@@ -17,118 +17,132 @@ import { SavingMasterSeeder } from './domestic/deposit/saving-master.seeder';
 import { CryptoMasterSeeder } from './domestic/crypto/crypto-master.seeder';
 import { CryptoMarketSeeder } from './domestic/crypto/crypto-market.seeder';
 import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history.seeder';
+import { OverseasCryptoMasterSeeder } from './overseas/crypto/crypto-master.seeder';
+import { OverseasCryptoMarketSeeder } from './overseas/crypto/crypto-market.seeder';
+import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price-history.seeder';
 
-// 지연 함수 추가
+// 지연 함수
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Seeder 실행 함수
+const runSeeder = async (seeder: any, name: string) => {
+  await seeder.run();
+  console.log(`✅ ${name} finished.`);
+  await delay(1000);
+};
 
 async function bootstrap() {
   console.time('All Seeding finished in');
   const app = await NestFactory.createApplicationContext(AppModule);
 
-  // Domestic Seeders
-  const kospiMasterSeeder = app.get(KospiMasterSeeder);
-  const kosdaqMasterSeeder = app.get(KosdaqMasterSeeder);
-  const stockMarketSeeder = app.get(StockMarketSeeder);
-  const etfMarketSeeder = app.get(EtfMarketSeeder);
-  const stockPriceHistorySeeder = app.get(StockPriceHistorySeeder);
-  const etfPriceHistorySeeder = app.get(EtfPriceHistorySeeder);
-  const etfComponentSeeder = app.get(EtfComponentSeeder);
-
-  // Overseas Seeders
-  const overseasMasterSeeder = app.get(OverseasMasterSeeder);
-  const overseasStockMarketSeeder = app.get(OverseasStockMarketSeeder);
-  const overseasEtfMarketSeeder = app.get(OverseasEtfMarketSeeder);
-  const overseasStockPriceHistorySeeder = app.get(
-    OverseasStockPriceHistorySeeder,
-  );
-  const overseasEtfPriceHistorySeeder = app.get(OverseasEtfPriceHistorySeeder);
-
-  // Domestic Deposit Seeders
-  const depositMasterSeeder = app.get(DepositMasterSeeder);
-  const savingMasterSeeder = app.get(SavingMasterSeeder);
-
-  // Domestic Crypto Seeders
-  const cryptoMasterSeeder = app.get(CryptoMasterSeeder);
-  const cryptoMarketSeeder = app.get(CryptoMarketSeeder);
-  const cryptoPriceHistorySeeder = app.get(CryptoPriceHistorySeeder);
+  // Seeder 인스턴스들
+  const seeders = {
+    kospiMaster: app.get(KospiMasterSeeder),
+    kosdaqMaster: app.get(KosdaqMasterSeeder),
+    overseasMaster: app.get(OverseasMasterSeeder),
+    stockMarket: app.get(StockMarketSeeder),
+    etfMarket: app.get(EtfMarketSeeder),
+    overseasStockMarket: app.get(OverseasStockMarketSeeder),
+    overseasEtfMarket: app.get(OverseasEtfMarketSeeder),
+    stockPriceHistory: app.get(StockPriceHistorySeeder),
+    etfPriceHistory: app.get(EtfPriceHistorySeeder),
+    overseasStockPriceHistory: app.get(OverseasStockPriceHistorySeeder),
+    overseasEtfPriceHistory: app.get(OverseasEtfPriceHistorySeeder),
+    etfComponent: app.get(EtfComponentSeeder),
+    depositMaster: app.get(DepositMasterSeeder),
+    savingMaster: app.get(SavingMasterSeeder),
+    cryptoMaster: app.get(CryptoMasterSeeder),
+    cryptoMarket: app.get(CryptoMarketSeeder),
+    cryptoPriceHistory: app.get(CryptoPriceHistorySeeder),
+    overseasCryptoMaster: app.get(OverseasCryptoMasterSeeder),
+    overseasCryptoMarket: app.get(OverseasCryptoMarketSeeder),
+    overseasCryptoPriceHistory: app.get(OverseasCryptoPriceHistorySeeder),
+  };
 
   console.log('--- All Seeders Start (Sequential Processing) ---');
 
-  // 1. Master Data (순차 실행)
+  // 1. Master Data
   console.log('1️⃣ Running master data seeders...');
-  await kospiMasterSeeder.run();
-  console.log('✅ KOSPI master seeder finished.');
+  const masterSeeders = [
+    { seeder: seeders.kospiMaster, name: 'KOSPI master seeder' },
+    { seeder: seeders.kosdaqMaster, name: 'KOSDAQ master seeder' },
+    { seeder: seeders.overseasMaster, name: 'Overseas master seeder' },
+  ];
 
-  await delay(1000); // 1초 대기
-
-  await kosdaqMasterSeeder.run();
-  console.log('✅ KOSDAQ master seeder finished.');
-
-  await delay(1000); // 1초 대기
-
-  await overseasMasterSeeder.run();
-  console.log('✅ Overseas master seeder finished.');
+  for (const { seeder, name } of masterSeeders) {
+    await runSeeder(seeder, name);
+  }
   console.log('✅ All master data seeders finished.');
 
-  // 2. Market Data (순차 실행)
-  console.log('2️⃣ Running market data seeders sequentially...');
-  await stockMarketSeeder.run();
-  console.log('✅ Domestic stock market seeder finished.');
+  // 2. Market Data
+  console.log('2️⃣ Running market data seeders...');
+  const marketSeeders = [
+    { seeder: seeders.stockMarket, name: 'Domestic stock market seeder' },
+    { seeder: seeders.etfMarket, name: 'Domestic ETF market seeder' },
+    {
+      seeder: seeders.overseasStockMarket,
+      name: 'Overseas stock market seeder',
+    },
+    { seeder: seeders.overseasEtfMarket, name: 'Overseas ETF market seeder' },
+  ];
 
-  await delay(1000); // 1초 대기
-
-  await etfMarketSeeder.run();
-  console.log('✅ Domestic ETF market seeder finished.');
-
-  await delay(1000); // 1초 대기
-
-  await overseasStockMarketSeeder.run();
-  console.log('✅ Overseas stock market seeder finished.');
-
-  await delay(1000); // 1초 대기
-
-  await overseasEtfMarketSeeder.run();
-  console.log('✅ Overseas ETF market seeder finished.');
+  for (const { seeder, name } of marketSeeders) {
+    await runSeeder(seeder, name);
+  }
   console.log('✅ All market data seeders finished.');
 
-  // 3. Price History (순차 실행)
-  console.log('3️⃣ Running price history seeders sequentially...');
-  await stockPriceHistorySeeder.run();
-  console.log('✅ Domestic stock price history seeder finished.');
+  // 3. Price History
+  console.log('3️⃣ Running price history seeders...');
+  const priceHistorySeeders = [
+    {
+      seeder: seeders.stockPriceHistory,
+      name: 'Domestic stock price history seeder',
+    },
+    {
+      seeder: seeders.etfPriceHistory,
+      name: 'Domestic ETF price history seeder',
+    },
+    {
+      seeder: seeders.overseasStockPriceHistory,
+      name: 'Overseas stock price history seeder',
+    },
+    {
+      seeder: seeders.overseasEtfPriceHistory,
+      name: 'Overseas ETF price history seeder',
+    },
+  ];
 
-  await delay(1000); // 1초 대기
-
-  await etfPriceHistorySeeder.run();
-  console.log('✅ Domestic ETF price history seeder finished.');
-
-  await delay(1000); // 1초 대기
-
-  await overseasStockPriceHistorySeeder.run();
-  console.log('✅ Overseas stock price history seeder finished.');
-
-  await delay(1000); // 1초 대기
-
-  await overseasEtfPriceHistorySeeder.run();
-  console.log('✅ Overseas ETF price history seeder finished.');
+  for (const { seeder, name } of priceHistorySeeders) {
+    await runSeeder(seeder, name);
+  }
   console.log('✅ All price history seeders finished.');
 
-  // 4. ETF Component (순차 실행)
+  // 4. ETF Component
   console.log('4️⃣ Running ETF component seeders...');
-  await etfComponentSeeder.run();
-  console.log('✅ ETF component seeders finished.');
+  await runSeeder(seeders.etfComponent, 'ETF component seeder');
 
-  // 5. 예금 정보 적재
-  console.log('5️⃣ Running deposit master seeder...');
-  await depositMasterSeeder.run();
-  await savingMasterSeeder.run();
-  console.log('✅ Deposit master seeder finished.');
+  // 5. Deposit
+  console.log('5️⃣ Running deposit seeders...');
+  await runSeeder(seeders.depositMaster, 'Deposit master seeder');
+  await runSeeder(seeders.savingMaster, 'Saving master seeder');
 
-  // 6. 암호화폐 정보 적재
-  console.log('6️⃣ Running crypto master seeder...');
-  await cryptoMasterSeeder.run();
-  await cryptoMarketSeeder.run();
-  await cryptoPriceHistorySeeder.run();
-  console.log('✅ Crypto master seeder finished.');
+  // 6. Crypto
+  console.log('6️⃣ Running crypto seeders...');
+  await runSeeder(seeders.cryptoMaster, 'Crypto master seeder');
+  await runSeeder(seeders.cryptoMarket, 'Crypto market seeder');
+  await runSeeder(seeders.cryptoPriceHistory, 'Crypto price history seeder');
+  await runSeeder(
+    seeders.overseasCryptoMaster,
+    'Overseas crypto master seeder',
+  );
+  await runSeeder(
+    seeders.overseasCryptoMarket,
+    'Overseas crypto market seeder',
+  );
+  await runSeeder(
+    seeders.overseasCryptoPriceHistory,
+    'Overseas crypto price history seeder',
+  );
 
   await app.close();
   console.log('--- All Seeders End ---');
