@@ -27,6 +27,9 @@ import { CryptoMarket } from '../entities/crypto/crypto-market.entity';
 import { CryptoMarketData } from '../entities/crypto/crypto-market-data.entity';
 import { CryptoPriceHistory } from '../entities/crypto/crypto-price-history.entity';
 import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history.seeder';
+import { OverseasCryptoMasterSeeder } from './overseas/crypto/crypto-master.seeder';
+import { OverseasCryptoMarketSeeder } from './overseas/crypto/crypto-market.seeder';
+import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price-history.seeder';
 
 @Module({
   imports: [
@@ -61,6 +64,9 @@ import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history
     CryptoMasterSeeder,
     CryptoMarketSeeder,
     CryptoPriceHistorySeeder,
+    OverseasCryptoMasterSeeder,
+    OverseasCryptoMarketSeeder,
+    OverseasCryptoPriceHistorySeeder,
   ],
   exports: [
     KospiMasterSeeder,
@@ -80,6 +86,9 @@ import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history
     CryptoMasterSeeder,
     CryptoMarketSeeder,
     CryptoPriceHistorySeeder,
+    OverseasCryptoMasterSeeder,
+    OverseasCryptoMarketSeeder,
+    OverseasCryptoPriceHistorySeeder,
   ],
 })
 export class SeederModule {}
