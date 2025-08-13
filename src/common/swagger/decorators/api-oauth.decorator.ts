@@ -7,7 +7,7 @@ import {
   LogoutResponseDto,
   RefreshTokenResponseDto,
   ValidateResponseDto,
-} from 'src/modules/oauth/dto';
+} from 'src/modules/auth/dto';
 
 /**
  * 소셜 로그아웃 응답
