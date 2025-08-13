@@ -10,15 +10,11 @@ import { User } from '../user/user.entity';
 
 @Entity('auth')
 export class Auth {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ type: 'uuid' })
   user_id: string;
-
-  @OneToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
 
   @Column({ type: 'varchar', length: 20 })
   provider: string;
@@ -34,4 +30,8 @@ export class Auth {
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
+
+  @OneToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }

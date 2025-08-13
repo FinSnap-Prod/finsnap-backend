@@ -20,8 +20,8 @@ export class LoginRequestDto {
   @IsString()
   @IsNotEmpty()
   @ApiProperty({
-    description: '소셜 로그인 토큰',
-    example: 'google-access-token',
+    description: 'OAuth 인증 코드',
+    example: '4/0AfJohXn...',
   })
-  access_token: string;
+  authorization_code: string;
 }
