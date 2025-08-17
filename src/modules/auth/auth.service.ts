@@ -187,4 +187,9 @@ export class AuthService {
   async storeAccessToken(userId: string, accessToken: string) {
     await this.authRepository.storeAccessToken(userId, accessToken);
   }
+
+  // 로그아웃
+  async logout(userId: string) {
+    await this.authRepository.invalidateTokens(userId);
+  }
 }

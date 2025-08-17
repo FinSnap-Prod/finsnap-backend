@@ -97,18 +97,38 @@ export class AuthController {
   @ApiLogoutResponse()
   @ApiCommonErrorResponses()
   async logout(
-    @Req() req: Request,
+    @User() user: any,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<LogoutResponseDto | ErrorResponseDto> {
-    this.logger.log('🔒 Logout API 컨트롤러 실행됨');
-    this.logger.log('🔑 Authorization Header:', req.headers.authorization);
-    this.logger.log('🍪 Cookies:', req.cookies);
+    this.logger.log(`🔒 사용자 ${user.nickname}(${user.email}) 로그아웃 요청`);
+    try {
+      await this.authService.logout(user.id);
 
-    const mockData: LogoutResponseDto = {
-      success: true,
-      message: 'Logged out successfully.',
-    };
+      res.clearCookie('refresh_token', {
+        httpOnly: false,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 0,
+        path: '/',
+      });
 
-    return mockData;
+      this.logger.log(
+        `🔒 사용자 ${user.nickname}(${user.email}) 로그아웃 완료`,
+      );
+
+      return {
+        success: true,
+        message: 'Logged out successfully.',
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ 사용자 ${user.nickname}(${user.email}) 로그아웃 실패: ${error}`,
+      );
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('Failed to logout'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Post(':provider')

@@ -22,11 +22,11 @@ export class Auth {
   @Column({ type: 'varchar', length: 255 })
   social_id: string;
 
-  @Column({ type: 'text' })
-  access_token: string;
+  @Column({ type: 'text', nullable: true })
+  access_token: string | null;
 
-  @Column({ type: 'text' })
-  refresh_token: string;
+  @Column({ type: 'text', nullable: true })
+  refresh_token: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

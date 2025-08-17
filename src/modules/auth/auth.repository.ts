@@ -53,4 +53,12 @@ export class AuthRepository {
       { access_token: accessToken },
     );
   }
+
+  // 로그아웃 - 토큰 무효화
+  async invalidateTokens(userId: string) {
+    await this.authRepository.update(
+      { user_id: userId },
+      { access_token: null, refresh_token: null },
+    );
+  }
 }
