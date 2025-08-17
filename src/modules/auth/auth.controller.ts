@@ -6,9 +6,12 @@ import {
   Param,
   Res,
   Logger,
-  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -30,6 +33,9 @@ import {
   ValidateResponseDto,
 } from './dto';
 import { ErrorResponseDto } from 'src/common/swagger/dto/error-response.dto';
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { User } from './decorators/user.decorator';
+import { JwtAuthGuard, RefreshGuard } from './guards';
 
 const COOKIE_OPTIONS = {
   httpOnly: false, // 개발자 도구에서 쿠키 확인 가능
@@ -46,6 +52,65 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  @Post('refresh')
+  @ApiOperation({ summary: '액세스 토큰 갱신' })
+  @ApiRefreshResponse()
+  @ApiCommonErrorResponses()
+  @UseGuards(RefreshGuard)
+  async refreshAccessToken(
+    @User() user: any,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<RefreshTokenResponseDto | ErrorResponseDto | any> {
+    try {
+      // 토큰 추출, 검증 (RefreshStrategy에서 처리)
+
+      const newAccessToken = await this.authService.refreshAccessToken(user.id);
+
+      await this.authService.storeAccessToken(user.id, newAccessToken);
+
+      res.cookie('refresh_token', user.refresh_token, COOKIE_OPTIONS);
+
+      return {
+        success: true,
+        message: 'Access token refreshed successfully.',
+        data: {
+          access_token: newAccessToken,
+          user: {
+            id: user.id,
+            email: user.email,
+            nickname: user.nickname,
+            profile_image: user.profile_image,
+          },
+        },
+      };
+    } catch (error) {
+      throw new HttpException(
+        ErrorResponseUtil.unauthorized('Refresh token expired'),
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '로그아웃' })
+  @ApiLogoutResponse()
+  @ApiCommonErrorResponses()
+  async logout(
+    @Req() req: Request,
+  ): Promise<LogoutResponseDto | ErrorResponseDto> {
+    this.logger.log('🔒 Logout API 컨트롤러 실행됨');
+    this.logger.log('🔑 Authorization Header:', req.headers.authorization);
+    this.logger.log('🍪 Cookies:', req.cookies);
+
+    const mockData: LogoutResponseDto = {
+      success: true,
+      message: 'Logged out successfully.',
+    };
+
+    return mockData;
+  }
+
   @Post(':provider')
   @ApiOperation({ summary: 'Google 토큰 검증 및 로그인' })
   @ApiLoginRequest()
@@ -59,7 +124,10 @@ export class AuthController {
   ): Promise<LoginResponseDto | ErrorResponseDto | any> {
     try {
       if (!authorization_code)
-        throw new BadRequestException('authorization_code is required');
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('authorization_code is required'),
+          HttpStatus.BAD_REQUEST,
+        );
 
       // OAuth 토큰 요청
       const googleToken = await this.authService.verifyAuthorizationCode(
@@ -97,69 +165,10 @@ export class AuthController {
         },
       };
     } catch (error) {
-      return {
-        success: false,
-        error: {
-          code: 401,
-          message: 'Authentication failed',
-        },
-      };
+      throw new HttpException(
+        ErrorResponseUtil.unauthorized('Authentication failed'),
+        HttpStatus.UNAUTHORIZED,
+      );
     }
-  }
-
-  @Post('refresh')
-  @ApiOperation({ summary: '액세스 토큰 갱신' })
-  @ApiRefreshResponse()
-  @ApiCommonErrorResponses()
-  async refresh(): Promise<RefreshTokenResponseDto> {
-    const mockData: RefreshTokenResponseDto = {
-      success: true,
-      message: 'Token refreshed successfully.',
-      data: {
-        access_token: 'new-token',
-        user: {
-          id: '26b3e24b-9f53-412c-a6a0-80b92f1e36d8',
-          email: 'test@test.com',
-          nickname: '승수',
-          profile_image: 'https://cdn.../profile.png',
-        },
-      },
-    };
-
-    return mockData;
-  }
-
-  @Get('validate')
-  @ApiOperation({ summary: '토큰 검증' })
-  @ApiValidateResponse()
-  @ApiCommonErrorResponses()
-  async validate(): Promise<ValidateResponseDto> {
-    const mockData: ValidateResponseDto = {
-      success: true,
-      message: 'Token is valid.',
-      data: {
-        user: {
-          id: '26b3e24b-9f53-412c-a6a0-80b92f1e36d8',
-          email: 'test@test.com',
-          nickname: '승수',
-          profile_image: 'https://cdn.../profile.png',
-        },
-      },
-    };
-
-    return mockData;
-  }
-
-  @Post('logout')
-  @ApiOperation({ summary: '로그아웃' })
-  @ApiLogoutResponse()
-  @ApiCommonErrorResponses()
-  async logout(): Promise<LogoutResponseDto> {
-    const mockData: LogoutResponseDto = {
-      success: true,
-      message: 'Logged out successfully.',
-    };
-
-    return mockData;
   }
 }
