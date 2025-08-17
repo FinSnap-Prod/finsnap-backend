@@ -57,21 +57,9 @@ export class UserController {
   @ApiOperation({ summary: '사용자 정보 조회' })
   @ApiGetUserResponse()
   @ApiCommonErrorResponses()
-  async getUser(): Promise<GetUserResponseDto> {
-    const mockData: GetUserResponseDto = {
-      success: true,
-      message: 'User info retrieved successfully.',
-      data: {
-        id: '26b3e24b-9f53-412c-a6a0-80b92f1e36d8',
-        provider: 'google',
-        email: 'test@test.com',
-        nickname: '승수',
-        profile_image: 'https://cdn.../profile.png',
-        created_at: '2025-07-01T10:00:00.000Z',
-      },
-    };
-
-    return mockData;
+  @UseGuards(JwtAuthGuard)
+  async getUser(@User() user: any): Promise<GetUserResponseDto> {
+    return await this.userService.getUser(user.id);
   }
 
   @Delete()
