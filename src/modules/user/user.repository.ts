@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { User } from '../../database/entities/user/user.entity';
 
 @Injectable()
@@ -24,10 +24,22 @@ export class UserRepository {
     return this.userRepository.save(user);
   }
 
-  // 유저 조회 from JWTstrategy, RefreshStrategy
+  // 유저 조회 from JWTstrategy, RefreshStrategy ...
   async findUserById(userId: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id: userId },
     });
+  }
+
+  // 유저 닉네임 중복 검사 (자신 제외)
+  async findByNicknameExcludeSelf(nickname: string, userId: string) {
+    return this.userRepository.findOne({
+      where: { nickname, id: Not(userId) },
+    });
+  }
+
+  // 유저 닉네임 수정
+  async updateUser(userId: string, nickname: string) {
+    return this.userRepository.update({ id: userId }, { nickname });
   }
 }
