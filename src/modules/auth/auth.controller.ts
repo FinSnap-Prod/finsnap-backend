@@ -22,7 +22,6 @@ import {
   ApiLogoutResponse,
   ApiRefreshResponse,
   ApiUnauthorizedResponse,
-  ApiValidateResponse,
 } from 'src/common/swagger';
 import {
   LoginRequestDto,
@@ -30,7 +29,6 @@ import {
   LoginResponseDto,
   LogoutResponseDto,
   RefreshTokenResponseDto,
-  ValidateResponseDto,
 } from './dto';
 import { ErrorResponseDto } from 'src/common/swagger/dto/error-response.dto';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
@@ -176,6 +174,7 @@ export class AuthController {
         message: 'Login successful',
         data: {
           access_token: access_token,
+          refresh_token: refresh_token, // Test용
           user: {
             id: user.id,
             email: user.email,
