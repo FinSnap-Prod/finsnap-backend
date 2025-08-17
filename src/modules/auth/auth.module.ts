@@ -9,9 +9,10 @@ import { AuthRepository } from './auth.repository';
 import { UserRepository } from '../user/user.repository';
 import jwtConfig from './config/jwt.config';
 import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from './strategies';
+import { JwtStrategy, RefreshStrategy } from './strategies';
 import { Auth } from 'src/database/entities/auth/auth.entity';
 import { User } from 'src/database/entities/user/user.entity';
+import { RefreshGuard } from './guards';
 
 @Module({
   imports: [
@@ -31,7 +32,14 @@ import { User } from 'src/database/entities/user/user.entity';
     TypeOrmModule.forFeature([Auth, User]),
   ],
   controllers: [AuthController],
-  providers: [AuthRepository, UserRepository, AuthService, JwtStrategy],
+  providers: [
+    AuthRepository,
+    UserRepository,
+    AuthService,
+    JwtStrategy,
+    RefreshStrategy,
+    RefreshGuard,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

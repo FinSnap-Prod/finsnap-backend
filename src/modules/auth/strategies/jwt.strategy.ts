@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,17 +14,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: configService.get<string>('jwt.secret') || '',
+      // 토큰 만료 시 예외 발생
       ignoreExpiration: false,
     });
   }
 
   async validate(payload: any) {
     try {
-      // UUID 추출
-      const userId = payload.sub;
+      // UUID 추출 - payload.userId 사용
+      const userId = payload.userId;
+
       const user = await this.authService.findUserById(userId);
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        throw new HttpException(
+          ErrorResponseUtil.unauthorized('User not found'),
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       return {
@@ -33,7 +39,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         profile_image: user.profile_image,
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw new HttpException(
+        ErrorResponseUtil.unauthorized('Invalid JWT token'),
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 }
