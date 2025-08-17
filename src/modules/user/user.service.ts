@@ -1,10 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { AuthRepository } from '../auth/auth.repository';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly authRepository: AuthRepository,
+  ) {}
 
   async updateNickname(userId: string, nickname: string) {
     // 1. 닉네임 유효성 검사
@@ -89,5 +93,34 @@ export class UserService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  async getUser(userId: string) {
+    const [user, auth] = await Promise.all([
+      this.userRepository.findUserById(userId),
+      this.authRepository.findAuthByUserId(userId),
+    ]);
+
+    if (!user || !auth) {
+      throw new HttpException(
+        ErrorResponseUtil.notFound(
+          'User or authentication information not found',
+        ),
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return {
+      success: true,
+      message: 'User info retrieved successfully.',
+      data: {
+        id: user.id,
+        provider: auth.provider,
+        email: user.email,
+        nickname: user.nickname,
+        profile_image: user.profile_image,
+        created_at: user.created_at.toISOString(),
+      },
+    };
   }
 }

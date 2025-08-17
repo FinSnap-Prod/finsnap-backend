@@ -27,7 +27,7 @@ export class UserRepository {
   // 유저 조회 from JWTstrategy, RefreshStrategy ...
   async findUserById(userId: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { id: userId },
+      where: { id: userId, deleted: false },
     });
   }
 

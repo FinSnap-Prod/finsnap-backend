@@ -61,4 +61,11 @@ export class AuthRepository {
       { access_token: null, refresh_token: null },
     );
   }
+
+  // 유저 ID로 인증 정보 조회
+  async findAuthByUserId(userId: string): Promise<Auth | null> {
+    return this.authRepository.findOne({
+      where: { user_id: userId },
+    });
+  }
 }
