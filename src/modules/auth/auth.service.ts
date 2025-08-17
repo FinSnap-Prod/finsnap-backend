@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
 import { ConfigService, ConfigType } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { UserRepository } from '../user/user.repository';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from './config/jwt.config';
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @Injectable()
 export class AuthService {
@@ -42,12 +43,18 @@ export class AuthService {
 
       const { access_token } = response.data;
       if (!access_token) {
-        throw new UnauthorizedException('Google token exchange failed');
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Google token exchange failed'),
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       return access_token;
     } catch (error) {
-      throw new UnauthorizedException('Google token exchange failed');
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('Google token exchange failed'),
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -64,7 +71,10 @@ export class AuthService {
       );
 
       if (!profile.id) {
-        throw new UnauthorizedException('Invalid Google token');
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Invalid google token'),
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       return {
@@ -74,7 +84,10 @@ export class AuthService {
         profile_image: profile.picture,
       };
     } catch (error) {
-      throw new UnauthorizedException('Failed to fetch user profile');
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('Failed to fetch user profile'),
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -119,7 +132,10 @@ export class AuthService {
         provider: newAuth.provider,
       };
     } catch (error) {
-      throw new UnauthorizedException('Failed to process user data');
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('Failed to process user data'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -149,8 +165,26 @@ export class AuthService {
     await this.authRepository.storeTokens(userId, access_token, refresh_token);
   }
 
-  // 유저 조회 from JWTstrategy
+  // 유저 조회 from JWTstrategy, RefreshStrategy
   async findUserById(userId: string) {
     return this.userRepository.findUserById(userId);
+  }
+
+  // 새로운 AT 생성
+  async refreshAccessToken(userId: string) {
+    const newAccessToken = await this.jwtService.signAsync(
+      { userId },
+      {
+        secret: this.jwtTokenConfig.secret,
+        expiresIn: this.jwtTokenConfig.signOptions?.expiresIn || '15m',
+      },
+    );
+
+    return newAccessToken;
+  }
+
+  // 새로운 AT 저장
+  async storeAccessToken(userId: string, accessToken: string) {
+    await this.authRepository.storeAccessToken(userId, accessToken);
   }
 }

@@ -2,6 +2,9 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,13 +14,27 @@ async function bootstrap() {
   // 전역 API prefix 설정
   app.setGlobalPrefix('api');
 
-  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
-
   app.enableCors({
-    origin: corsOrigin,
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Origin',
+      'Accept',
+      'X-Requested-With',
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Cookie',
+    ],
+  });
+
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+    } else {
+      next();
+    }
   });
 
   // Swagger 설정

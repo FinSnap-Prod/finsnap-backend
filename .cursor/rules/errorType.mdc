@@ -1,0 +1,107 @@
+---
+alwaysApply: true
+---
+
+# 📋 에러 응답 표준화 코드 규칙
+
+## 1. 에러 응답 형식 표준
+
+모든 에러 응답은 `error-response.dto.ts` 형식을 따라야 합니다:
+
+```typescript
+{
+  "success": false,
+  "error": {
+    "code": number,      // HTTP 상태 코드
+    "message": string    // 에러 메시지
+  }
+}
+```
+
+## 2. 🔧 ErrorResponseUtil 헬퍼 함수
+
+```typescript
+// src/common/utils/error-response.util.ts
+import { HttpStatus } from '@nestjs/common';
+import { ErrorResponseDto } from '../swagger/dto/error-response.dto';
+
+export class ErrorResponseUtil {
+  static create(code: number, message: string): ErrorResponseDto {
+    return { success: false, error: { code, message } };
+  }
+
+  static badRequest(message?: string) {
+    return this.create(HttpStatus.BAD_REQUEST, message || 'Bad request');
+  }
+
+  static unauthorized(message?: string) {
+    return this.create(HttpStatus.UNAUTHORIZED, message || 'Unauthorized');
+  }
+
+  static notFound(message?: string) {
+    return this.create(HttpStatus.NOT_FOUND, message || 'Not found');
+  }
+
+  static internalServerError(message?: string) {
+    return this.create(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      message || 'Internal server error',
+    );
+  }
+}
+```
+
+## 3. 📝 사용 규칙
+
+### ❌ 잘못된 방법
+
+```typescript
+throw new UnauthorizedException('User not found');
+throw new BadRequestException('Invalid input');
+```
+
+### ✅ 올바른 방법
+
+```typescript
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+
+throw new HttpException(
+  ErrorResponseUtil.unauthorized('User not found'),
+  HttpStatus.UNAUTHORIZED,
+);
+
+throw new HttpException(
+  ErrorResponseUtil.badRequest('Invalid input'),
+  HttpStatus.BAD_REQUEST,
+);
+```
+
+## 4. 🚨 핵심 규칙
+
+1. **모든 에러는 `HttpException`으로 던지기**
+2. **`ErrorResponseUtil` 헬퍼 함수 사용 필수**
+3. **`ErrorResponseDto` 형식 준수**
+4. **HTTP 상태 코드는 `HttpStatus` 상수 사용**
+
+## 5. 📋 체크리스트
+
+- [ ] `ErrorResponseDto` 형식 사용
+- [ ] `ErrorResponseUtil` 헬퍼 함수 사용
+- [ ] `HttpException` 사용
+- [ ] `HttpStatus` 상수 사용
+- [ ] 명확한 에러 메시지
+
+## 6. 🚫 금지사항
+
+- `BadRequestException`, `UnauthorizedException` 등 기본 Exception 사용 금지
+- 에러 응답 형식을 `ErrorResponseDto`와 다르게 구성 금지
+- HTTP 상태 코드 하드코딩 금지
+
+---
+
+**이 규칙을 따르면 모든 에러 응답이 일관된 형식으로 반환됩니다!** 🚀
+description:
+globs:
+alwaysApply: false
+
+---

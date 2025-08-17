@@ -45,4 +45,12 @@ export class AuthRepository {
       { access_token, refresh_token },
     );
   }
+
+  // 새로운 AT 저장
+  async storeAccessToken(userId: string, accessToken: string) {
+    await this.authRepository.update(
+      { user_id: userId },
+      { access_token: accessToken },
+    );
+  }
 }
