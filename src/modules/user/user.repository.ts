@@ -24,7 +24,7 @@ export class UserRepository {
     return this.userRepository.save(user);
   }
 
-  // 유저 조회 from JWTstrategy
+  // 유저 조회 from JWTstrategy, RefreshStrategy
   async findUserById(userId: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id: userId },
