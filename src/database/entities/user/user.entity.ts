@@ -1,9 +1,11 @@
+import { Max, Min } from 'class-validator';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Unique,
 } from 'typeorm';
 
 @Entity('user')
@@ -14,6 +16,9 @@ export class User {
   @Column({ type: 'varchar', length: 100 })
   email: string;
 
+  @Min(5)
+  @Max(20)
+  @Unique(['nickname'])
   @Column({ type: 'varchar', length: 50 })
   nickname: string;
 
