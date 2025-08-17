@@ -13,7 +13,7 @@ export const User = createParamDecorator(
 
     /**
      * Guard에서 설정한 user 객체 반환
-     * 즉, refresh.strategy.ts에서 반환한 객체
+     * 즉, RefreshGuard 또는 JwtAuthGuard에서 반환한 객체
      */
     return request.user;
   },
