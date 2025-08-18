@@ -102,6 +102,13 @@ export class AuthService {
       const existingUser = await this.authRepository.findBySocialId(socialId);
 
       if (existingUser) {
+        // 탈퇴한 사용자 차단
+        if (existingUser.user.deleted) {
+          throw new HttpException(
+            ErrorResponseUtil.forbidden('Account has been deactivated'),
+            HttpStatus.FORBIDDEN,
+          );
+        }
         return {
           id: existingUser.user_id,
           email: existingUser.user.email,
@@ -132,6 +139,11 @@ export class AuthService {
         provider: newAuth.provider,
       };
     } catch (error) {
+      // HttpException은 그대로 전달
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         ErrorResponseUtil.internalServerError('Failed to process user data'),
         HttpStatus.INTERNAL_SERVER_ERROR,
