@@ -58,6 +58,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     // 기타 에러 처리
     if (err) {
       this.logger.error('❌ JwtAuthGuard 에러 발생:', err.message);
+
+      // 탈퇴한 사용자 에러 처리 (403 Forbidden)
+      if (err.status === HttpStatus.FORBIDDEN) {
+        throw new HttpException(
+          ErrorResponseUtil.forbidden('Account has been deactivated'),
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       throw new HttpException(
         ErrorResponseUtil.unauthorized('Authentication failed'),
         HttpStatus.UNAUTHORIZED,

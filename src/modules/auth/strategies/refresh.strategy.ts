@@ -63,6 +63,14 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
         );
       }
 
+      // 탈퇴한 사용자 차단
+      if (user.deleted) {
+        throw new HttpException(
+          ErrorResponseUtil.forbidden('Account has been deactivated'),
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       return {
         id: accessPayload.userId,
         email: user.email,
