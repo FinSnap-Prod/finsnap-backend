@@ -15,8 +15,11 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return health check response', () => {
+      const result = appController.getHello();
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('서버가 정상 동작 중입니다.');
+      expect(result.data).toBe('Hello World!');
     });
   });
 });
