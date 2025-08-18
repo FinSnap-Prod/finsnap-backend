@@ -2,12 +2,14 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { AuthRepository } from '../auth/auth.repository';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly authRepository: AuthRepository,
+    private readonly dataSource: DataSource,
   ) {}
 
   async updateNickname(userId: string, nickname: string) {
@@ -122,5 +124,59 @@ export class UserService {
         created_at: user.created_at.toISOString(),
       },
     };
+  }
+
+  async deleteUser(userId: string, delete_reason: string) {
+    try {
+      // 1. 유저 삭제 상태 확인
+      const user = await this.userRepository.findUserById(userId);
+
+      if (!user) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('User not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (user.deleted) {
+        return {
+          success: true,
+          message: 'Account already deactivated.',
+          data: {
+            user_id: userId,
+            deactivated_at: user.deleted_at?.toISOString() || null,
+            status: 'already_deactivated',
+          },
+        };
+      }
+
+      // 2. 트랜잭션으로 탈퇴 처리
+      await this.dataSource.transaction(async (transactionalEntityManager) => {
+        // 2-1. 사용자 비활성화
+        await this.userRepository.deleteUser(userId, delete_reason);
+
+        // 2-2. 인증 정보 무효화
+        await this.authRepository.invalidateTokens(userId);
+      });
+
+      return {
+        success: true,
+        message: 'Account deactivated successfully.',
+        data: {
+          user_id: userId,
+          deactivated_at: new Date().toISOString(),
+          status: 'deactivated',
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('Failed to deactivate account'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

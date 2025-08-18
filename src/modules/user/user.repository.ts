@@ -42,4 +42,19 @@ export class UserRepository {
   async updateUser(userId: string, nickname: string) {
     return this.userRepository.update({ id: userId }, { nickname });
   }
+
+  // 삭제된 사용자 확인
+  async findDeletedUserById(userId: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id: userId, deleted: true },
+    });
+  }
+
+  // 유저 삭제
+  async deleteUser(userId: string, delete_reason: string): Promise<void> {
+    await this.userRepository.update(
+      { id: userId },
+      { deleted: true, deleted_at: new Date(), delete_reason },
+    );
+  }
 }

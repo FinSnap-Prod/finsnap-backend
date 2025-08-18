@@ -1,6 +1,5 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Param,
@@ -8,10 +7,9 @@ import {
   Logger,
   HttpException,
   HttpStatus,
-  Req,
   UseGuards,
 } from '@nestjs/common';
-import { Response, Request } from 'express';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -184,9 +182,18 @@ export class AuthController {
         },
       };
     } catch (error) {
+      // HttpException은 그대로 전달 (상태 코드 유지)
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // 예상치 못한 에러는 500 Internal Server Error로 변환
+      this.logger.error('❌ 로그인 처리 중 예상치 못한 에러 발생:', error);
       throw new HttpException(
-        ErrorResponseUtil.unauthorized('Authentication failed'),
-        HttpStatus.UNAUTHORIZED,
+        ErrorResponseUtil.internalServerError(
+          'Login failed due to internal server error',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

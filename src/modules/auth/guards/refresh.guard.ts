@@ -14,6 +14,14 @@ export class RefreshGuard extends AuthGuard('refresh') {
 
     if (err) {
       this.logger.error('❌ RefreshGuard 에러 발생:', err.message);
+
+      if (err.status === HttpStatus.FORBIDDEN) {
+        throw new HttpException(
+          ErrorResponseUtil.forbidden('Account has been deactivated'),
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       throw new HttpException(
         ErrorResponseUtil.unauthorized('Invalid refresh token'),
         HttpStatus.UNAUTHORIZED,

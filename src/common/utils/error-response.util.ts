@@ -14,6 +14,10 @@ export class ErrorResponseUtil {
     return this.create(HttpStatus.UNAUTHORIZED, message || 'Unauthorized');
   }
 
+  static forbidden(message?: string) {
+    return this.create(HttpStatus.FORBIDDEN, message || 'Forbidden');
+  }
+
   static notFound(message?: string) {
     return this.create(HttpStatus.NOT_FOUND, message || 'Not found');
   }

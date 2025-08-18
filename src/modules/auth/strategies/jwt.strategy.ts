@@ -32,6 +32,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         );
       }
 
+      // 탈퇴한 사용자 차단
+      if (user.deleted) {
+        throw new HttpException(
+          ErrorResponseUtil.forbidden('Account has been deactivated'),
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
       return {
         id: user.id,
         email: user.email,

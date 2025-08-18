@@ -1,4 +1,4 @@
-import { Max, Min } from 'class-validator';
+import { Length } from 'class-validator';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 
 @Entity('user')
+@Unique(['nickname'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -16,10 +17,8 @@ export class User {
   @Column({ type: 'varchar', length: 100 })
   email: string;
 
-  @Min(5)
-  @Max(20)
-  @Unique(['nickname'])
   @Column({ type: 'varchar', length: 50 })
+  @Length(5, 20)
   nickname: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -31,6 +30,17 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'deleted' })
   deleted: boolean;
+
+  @Column({ type: 'timestamp', name: 'deleted_at', nullable: true })
+  deleted_at: Date | null;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'delete_reason',
+    nullable: true,
+  })
+  delete_reason: string | null;
 }
