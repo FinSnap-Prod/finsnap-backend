@@ -4,10 +4,13 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity('favorite')
+@Unique(['user_id', 'sort_order'])
+@Unique(['user_id', 'name'])
 export class Favorite {
   @PrimaryGeneratedColumn()
   id: number;
