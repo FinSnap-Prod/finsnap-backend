@@ -6,8 +6,9 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
-import { FavoriteService } from './favorite.service';
+import { FavoriteFolderService } from './favorite-folder.service';
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import {
   GetFavoriteFoldersResponseDto,
@@ -27,37 +28,24 @@ import {
   ApiDeleteFavoriteFolderResponse,
   ApiUpdateFavoriteFolderResponse,
 } from 'src/common/swagger';
+import { JwtAuthGuard } from '../auth/guards';
+import { User } from '../auth/decorators/user.decorator';
 
 @ApiTags('favorites')
 @ApiBearerAuth()
 @Controller('favorites')
 export class FavoriteFolderController {
-  constructor(private readonly favoriteService: FavoriteService) {}
+  constructor(private readonly favoriteFolderService: FavoriteFolderService) {}
 
   @Get()
   @ApiOperation({ summary: '관심종목 폴더 목록 조회' })
   @ApiGetFavoriteFoldersResponse()
   @ApiCommonErrorResponses()
-  async getFavoriteFolders(): Promise<GetFavoriteFoldersResponseDto> {
-    // 임시 목업 데이터
-    const mockFavorites = [
-      {
-        favorite_id: 1,
-        name: '배당주 투자',
-        sort_order: 1,
-      },
-      {
-        favorite_id: 2,
-        name: '해외 성장주',
-        sort_order: 2,
-      },
-    ];
-
-    return {
-      success: true,
-      message: 'Favorite Folders retrieved successfully.',
-      data: mockFavorites,
-    };
+  @UseGuards(JwtAuthGuard)
+  async getFavoriteFolders(
+    @User() user: any,
+  ): Promise<GetFavoriteFoldersResponseDto> {
+    return await this.favoriteFolderService.getFavoriteFolders(user.id);
   }
 
   @Post()
