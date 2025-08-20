@@ -8,7 +8,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { FavoriteService } from './favorite.service';
+import { FavoriteAssetService } from './favorite-asset.service';
 import {
   ApiOperation,
   ApiTags,
@@ -42,7 +42,7 @@ import {
 @ApiBearerAuth()
 @Controller('favorites/:favorite_id/items')
 export class FavoriteAssetController {
-  constructor(private readonly favoriteService: FavoriteService) {}
+  constructor(private readonly favoriteAssetService: FavoriteAssetService) {}
 
   @Get()
   @ApiOperation({ summary: '관심종목 자산 목록 조회' })
