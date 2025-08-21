@@ -52,21 +52,14 @@ export class FavoriteFolderController {
   @ApiOperation({ summary: '관심종목 폴더 생성' })
   @ApiCreateFavoriteFolderResponse()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async createFavoriteFolder(
     @Body() createFavoriteFolderDto: CreateFavoriteFolderDto,
+    @User() user: any,
   ): Promise<CreateFavoriteFolderResponseDto> {
-    // 임시 목업 데이터
-    const createdFolder = {
-      favorite_id: 1,
-      name: createFavoriteFolderDto.name,
-      sort_order: 1,
-    };
+    const { name } = createFavoriteFolderDto;
 
-    return {
-      success: true,
-      message: 'Favorite Folder created successfully.',
-      data: createdFolder,
-    };
+    return await this.favoriteFolderService.createFavoriteFolder(name, user.id);
   }
 
   @Delete(':favorite_id')
