@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { FavoriteFolderRepository } from './favorite-folder.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { FavoriteItemDto } from './dto';
 
 @Injectable()
 export class FavoriteFolderService {
@@ -104,6 +105,24 @@ export class FavoriteFolderService {
     return {
       success: true,
       message: 'Favorite Folder deleted successfully.',
+    };
+  }
+
+  async updateFavoriteFolder(favorites: FavoriteItemDto[], userId: string) {
+    const updatedFolder =
+      await this.favoriteRepository.updateFavoriteFolderWithTransation(
+        favorites,
+        userId,
+      );
+
+    return {
+      success: true,
+      message: 'Favorite Folder updated successfully.',
+      data: updatedFolder.map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        sort_order: folder.sort_order,
+      })),
     };
   }
 }

@@ -15,7 +15,6 @@ import {
   CreateFavoriteFolderResponseDto,
   CreateFavoriteFolderDto,
   DeleteFavoriteFolderResponseDto,
-  UpdateFavoriteFolderParamsDto,
   UpdateFavoriteFolderBodyDto,
   UpdateFavoriteFolderResponseDto,
   DeleteFavoriteFolderParamDto,
@@ -78,18 +77,18 @@ export class FavoriteFolderController {
     );
   }
 
-  @Put(':favorite_id')
+  @Put()
   @ApiOperation({ summary: '관심종목 폴더 수정' })
   @ApiUpdateFavoriteFolderResponse()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async updateFavoriteFolder(
-    @Param() updateFavoriteFolderParamDto: UpdateFavoriteFolderParamsDto,
     @Body() updateFavoriteFolderBodyDto: UpdateFavoriteFolderBodyDto,
+    @User() user: any,
   ): Promise<UpdateFavoriteFolderResponseDto> {
-    return {
-      success: true,
-      message: 'Favorite Folder updated successfully.',
-      data: updateFavoriteFolderBodyDto,
-    };
+    return await this.favoriteFolderService.updateFavoriteFolder(
+      updateFavoriteFolderBodyDto.favorites,
+      user.id,
+    );
   }
 }

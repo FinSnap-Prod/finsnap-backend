@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Favorite } from 'src/database/entities/favorite/favorite.entity';
-import { Repository, Transaction } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { FavoriteItemDto } from './dto';
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @Injectable()
 export class FavoriteFolderRepository {
   constructor(
     @InjectRepository(Favorite)
     private favoriteRepository: Repository<Favorite>,
+    private dataSource: DataSource,
   ) {}
 
   // 사용자의 관심종목 폴더 목록 조회
@@ -75,5 +78,69 @@ export class FavoriteFolderRepository {
         deletedSortOrder,
       })
       .execute();
+  }
+
+  // 폴더 이름 변경
+  async updateFavoriteFolderName(favoriteId: number, name: string) {
+    return this.favoriteRepository.update({ id: favoriteId }, { name });
+  }
+
+  // 폴더 정렬 순서 변경
+  async updateFavoriteFolderSortOrder(favoriteId: number, sort_order: number) {
+    return this.favoriteRepository.update({ id: favoriteId }, { sort_order });
+  }
+
+  async updateFavoriteFolderWithTransation(
+    favorites: FavoriteItemDto[],
+    userId: string,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 폴더 조회 및 검증
+      for (const favorite of favorites) {
+        const existingFolder = await manager.findOne(Favorite, {
+          where: { id: favorite.id, user_id: userId },
+        });
+
+        if (!existingFolder) {
+          throw new HttpException(
+            ErrorResponseUtil.badRequest('폴더를 찾을 수 없습니다.'),
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      // 2. 임시로 sort_order를 큰 값으로 설정
+      for (const favorite of favorites) {
+        await manager.update(
+          Favorite,
+          { id: favorite.id },
+          { sort_order: favorite.sort_order + 10000 },
+        );
+      }
+
+      // 3. 실제 sort_order로 설정
+      for (const favorite of favorites) {
+        await manager.update(
+          Favorite,
+          { id: favorite.id },
+          { sort_order: favorite.sort_order },
+        );
+      }
+
+      // 4. 폴더 이름 변경
+      for (const favorite of favorites) {
+        await manager.update(
+          Favorite,
+          { id: favorite.id },
+          { name: favorite.name },
+        );
+      }
+
+      // 5. 수정된 폴더 조회
+      return manager.find(Favorite, {
+        where: { user_id: userId },
+        order: { sort_order: 'ASC' },
+      });
+    });
   }
 }
