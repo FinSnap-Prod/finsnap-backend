@@ -55,13 +55,3 @@ export class UpdateFavoriteFolderBodyDto {
   favorites: FavoriteItemDto[];
 }
 
-// Params DTO (경로 파라미터) - 필요시 사용
-export class UpdateFavoriteFolderParamsDto {
-  @ApiProperty({
-    description: '관심종목 폴더 ID',
-    example: 1,
-  })
-  @IsNumber()
-  @IsPositive()
-  id: number;
-}
