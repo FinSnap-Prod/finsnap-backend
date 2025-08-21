@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { FavoriteFolderRepository } from './favorite-folder.repository';
+import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @Injectable()
 export class FavoriteFolderService {
@@ -25,6 +26,52 @@ export class FavoriteFolderService {
         name: folder.name,
         sort_order: folder.sort_order,
       })),
+    };
+  }
+
+  async createFavoriteFolder(name: string, userId: string) {
+    //1. 폴더명 중복 조회
+    const existingFolder =
+      await this.favoriteRepository.findByFolderNameWithUserId(name, userId);
+
+    if (existingFolder) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('폴더 이름이 중복됩니다.'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    //2-1. 폴더 정렬 순서 최대값 조회
+    const maxSortOrder = await this.favoriteRepository.findMaxSortOrder(userId);
+    const newSortOrder = maxSortOrder ? maxSortOrder + 1 : 1;
+
+    //2-2. 새로운 폴더 생성
+    await this.favoriteRepository.createFavoriteFolder(
+      name,
+      userId,
+      newSortOrder,
+    );
+
+    //3. 생성된 폴더 조회
+    const createdFolder =
+      await this.favoriteRepository.findByFolderNameWithUserId(name, userId);
+
+    if (!createdFolder) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('폴더 생성에 실패했습니다.'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    //4. 생성된 폴더 리턴
+    return {
+      success: true,
+      message: 'Favorite Folder created successfully.',
+      data: {
+        favorite_id: createdFolder.id,
+        name: createdFolder.name,
+        sort_order: createdFolder.sort_order,
+      },
     };
   }
 }
