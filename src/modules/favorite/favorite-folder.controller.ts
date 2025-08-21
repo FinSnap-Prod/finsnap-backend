@@ -14,11 +14,11 @@ import {
   GetFavoriteFoldersResponseDto,
   CreateFavoriteFolderResponseDto,
   CreateFavoriteFolderDto,
-  DeleteFavoriteFolderParamDto,
   DeleteFavoriteFolderResponseDto,
   UpdateFavoriteFolderParamsDto,
   UpdateFavoriteFolderBodyDto,
   UpdateFavoriteFolderResponseDto,
+  DeleteFavoriteFolderParamDto,
 } from './dto';
 import {
   ApiCommonErrorResponses,
@@ -57,22 +57,25 @@ export class FavoriteFolderController {
     @Body() createFavoriteFolderDto: CreateFavoriteFolderDto,
     @User() user: any,
   ): Promise<CreateFavoriteFolderResponseDto> {
-    const { name } = createFavoriteFolderDto;
-
-    return await this.favoriteFolderService.createFavoriteFolder(name, user.id);
+    return await this.favoriteFolderService.createFavoriteFolder(
+      createFavoriteFolderDto.name,
+      user.id,
+    );
   }
 
   @Delete(':favorite_id')
   @ApiOperation({ summary: '관심종목 폴더 삭제' })
   @ApiDeleteFavoriteFolderResponse()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async deleteFavoriteFolder(
     @Param() deleteFavoriteFolderParamDto: DeleteFavoriteFolderParamDto,
+    @User() user: any,
   ): Promise<DeleteFavoriteFolderResponseDto> {
-    return {
-      success: true,
-      message: 'Favorite Folder deleted successfully.',
-    };
+    return await this.favoriteFolderService.deleteFavoriteFolder(
+      deleteFavoriteFolderParamDto.favorite_id,
+      user.id,
+    );
   }
 
   @Put(':favorite_id')

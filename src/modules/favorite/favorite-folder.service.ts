@@ -74,4 +74,36 @@ export class FavoriteFolderService {
       },
     };
   }
+
+  async deleteFavoriteFolder(favorite_id: string, userId: string) {
+    const favoriteId = Number(favorite_id);
+
+    //1. 폴더 조회
+    const existingFolder =
+      await this.favoriteRepository.findByFolderIdWithUserId(
+        favoriteId,
+        userId,
+      );
+
+    if (!existingFolder) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('폴더를 찾을 수 없습니다.'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const deletedSortOrder = existingFolder.sort_order;
+
+    //2-1. 폴더 삭제
+    await this.favoriteRepository.deleteFavoriteFolder(favoriteId);
+
+    //2-2. 폴더 삭제 후 정렬 순서 조정
+    await this.favoriteRepository.updateSortOrder(userId, deletedSortOrder);
+
+    //3. 리턴
+    return {
+      success: true,
+      message: 'Favorite Folder deleted successfully.',
+    };
+  }
 }

@@ -49,4 +49,31 @@ export class FavoriteFolderRepository {
 
     return this.favoriteRepository.save(newFolder);
   }
+
+  // 폴더 ID 중복 조회
+  async findByFolderIdWithUserId(favoriteId: number, userId: string) {
+    return this.favoriteRepository.findOne({
+      where: { id: favoriteId, user_id: userId },
+    });
+  }
+
+  // 폴더 삭제
+  async deleteFavoriteFolder(favoriteId: number) {
+    return this.favoriteRepository.delete(favoriteId);
+  }
+
+  // 폴더 정렬 순서 조정
+  async updateSortOrder(userId: string, deletedSortOrder) {
+    await this.favoriteRepository
+      .createQueryBuilder()
+      .update(Favorite)
+      .set({
+        sort_order: () => 'sort_order -1',
+      })
+      .where('user_id = :userId AND sort_order > :deletedSortOrder', {
+        userId,
+        deletedSortOrder,
+      })
+      .execute();
+  }
 }
