@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsOptional, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsPositive, IsOptional, IsIn, IsNumberString } from 'class-validator';
 
 // Path Params DTO
 export class GetFavoriteAssetsParamDto {
@@ -8,10 +7,9 @@ export class GetFavoriteAssetsParamDto {
     description: '관심종목 폴더 ID',
     example: 11,
   })
-  @IsNumber()
+  @IsNumberString()
   @IsPositive()
-  @Transform(({ value }) => parseInt(value))
-  favorite_id: number;
+  favorite_id: string;
 }
 
 // Query Params DTO

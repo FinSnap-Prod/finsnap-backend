@@ -14,7 +14,8 @@ export class FavoriteAssetDto {
     description: '자산 정보',
     example: {
       ticker: '005930',
-      name: '삼성전자',
+      kor_name: '삼성전자',
+      eng_name: 'Samsung Electronics',
       market: 'KOSPI',
       price: 73500,
       change_price: -200,
@@ -23,7 +24,8 @@ export class FavoriteAssetDto {
   })
   info: {
     ticker: string;
-    name: string;
+    kor_name: string;
+    eng_name: string;
     market: string;
     price: number;
     change_price: number;
@@ -52,7 +54,8 @@ export class GetFavoriteAssetsResponseDto {
         sort_order: 1,
         info: {
           ticker: '005930',
-          name: '삼성전자',
+          kor_name: '삼성전자',
+          eng_name: 'Samsung Electronics',
           market: 'KOSPI',
           price: 73500,
           change_price: -200,
@@ -66,7 +69,8 @@ export class GetFavoriteAssetsResponseDto {
         sort_order: 2,
         info: {
           ticker: 'BTC',
-          name: 'Bitcoin',
+          kor_name: '비트코인',
+          eng_name: 'Bitcoin',
           market: 'Binance',
           price: 30200,
           change_price: 300,
