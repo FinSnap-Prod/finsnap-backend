@@ -287,7 +287,7 @@ export class SavingMasterSeeder {
   ): DepositInfo[] {
     return results.map((d) => {
       const savingInfo = new DepositInfo();
-      savingInfo.name = d.fin_prdt_nm || '';
+      savingInfo.kor_name = d.fin_prdt_nm || '';
       savingInfo.product_code = d.fin_prdt_cd || '';
       savingInfo.bank_name = d.kor_co_nm || '';
       savingInfo.bank_code = d.fin_co_no || '';

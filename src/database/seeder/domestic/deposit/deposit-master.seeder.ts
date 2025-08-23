@@ -264,7 +264,7 @@ export class DepositMasterSeeder {
   ): DepositInfo[] {
     return results.map((d) => {
       const depositInfo = new DepositInfo();
-      depositInfo.name = d.fin_prdt_nm || '';
+      depositInfo.kor_name = d.fin_prdt_nm || '';
       depositInfo.product_code = d.fin_prdt_cd || '';
       depositInfo.bank_name = d.kor_co_nm || '';
       depositInfo.bank_code = d.fin_co_no || '';
