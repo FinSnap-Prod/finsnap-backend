@@ -28,4 +28,44 @@ export class FavoriteAssetRepository {
       order: { sort_order: 'ASC' },
     });
   }
+
+  // 폴더 내 자산 중복 조회
+  async findFavoriteAsset(
+    favoriteId: number,
+    assetType: string,
+    infoId: number,
+  ) {
+    return this.favoriteAssetRepository.findOne({
+      where: {
+        favorite_id: favoriteId,
+        asset_type: assetType,
+        info_id: infoId,
+      },
+    });
+  }
+
+  // 정렬 순서 최대값 조회
+  async findMaxSortOrder(favoriteId: number) {
+    return this.favoriteAssetRepository.findOne({
+      where: { favorite_id: favoriteId },
+      order: { sort_order: 'DESC' },
+    });
+  }
+
+  // 자산 추가 및 정렬 순서 업데이트
+  async createFavoriteAsset(
+    favoriteId: number,
+    assetType: string,
+    infoId: number,
+    sortOrder: number,
+  ) {
+    const newAsset = this.favoriteAssetRepository.create({
+      favorite_id: favoriteId,
+      asset_type: assetType,
+      info_id: infoId,
+      sort_order: sortOrder,
+    });
+
+    return this.favoriteAssetRepository.save(newAsset);
+  }
 }
