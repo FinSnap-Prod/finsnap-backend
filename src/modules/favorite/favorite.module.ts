@@ -8,9 +8,13 @@ import { Favorite } from 'src/database/entities/favorite/favorite.entity';
 import { FavoriteAsset } from 'src/database/entities/favorite/favorite-asset.entity';
 import { FavoriteFolderRepository } from './favorite-folder.repository';
 import { FavoriteAssetRepository } from './favorite-asset.repository';
+import { InvestmentModule } from '../investment/investment.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Favorite, FavoriteAsset])],
+  imports: [
+    TypeOrmModule.forFeature([Favorite, FavoriteAsset]),
+    InvestmentModule,
+  ],
   controllers: [FavoriteFolderController, FavoriteAssetController],
   providers: [
     FavoriteFolderService,

@@ -8,5 +8,6 @@ import { DepositModule } from './deposit/deposit.module';
 @Module({
   providers: [InvestmentService],
   imports: [StockModule, EtfModule, CryptoModule, DepositModule],
+  exports: [StockModule, EtfModule, CryptoModule, DepositModule],
 })
 export class InvestmentModule {}
