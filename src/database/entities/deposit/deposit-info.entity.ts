@@ -6,8 +6,10 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  OneToOne,
 } from 'typeorm';
 import { DepositType } from './deposit-type.entity';
+import { DepositMarketData } from './deposit-market-data.entity';
 
 @Entity('deposit_info')
 @Unique(['product_code'])
@@ -15,8 +17,14 @@ export class DepositInfo {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @OneToOne(
+    () => DepositMarketData,
+    (depositMarketData) => depositMarketData.deposit_info,
+  )
+  deposit_market_data: DepositMarketData;
+
   @Column({ type: 'varchar', length: 100 })
-  name: string;
+  kor_name: string;
 
   @Column({ type: 'varchar', length: 150 })
   product_code: string;
