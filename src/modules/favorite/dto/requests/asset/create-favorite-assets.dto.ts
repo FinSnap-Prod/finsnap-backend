@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsNumber,
-  IsPositive,
-  IsOptional,
-  IsIn,
-  IsString,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsPositive, IsIn, IsString } from 'class-validator';
 
 // Path Params DTO
 export class CreateFavoriteAssetParamDto {
@@ -14,10 +7,9 @@ export class CreateFavoriteAssetParamDto {
     description: '관심종목 폴더 ID',
     example: 11,
   })
-  @IsNumber()
+  @IsString()
   @IsPositive()
-  @Transform(({ value }) => parseInt(value))
-  favorite_id: number;
+  favorite_id: string;
 }
 
 // Body DTO
@@ -35,8 +27,6 @@ export class CreateFavoriteAssetBodyDto {
     description: '자산 정보 ID',
     example: 3203,
   })
-  @IsNumber()
-  @IsPositive()
-  @Transform(({ value }) => parseInt(value))
-  info_id: number;
+  @IsString()
+  info_id: string;
 }

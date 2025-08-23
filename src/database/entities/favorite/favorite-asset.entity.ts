@@ -4,10 +4,12 @@ import {
   Column,
   JoinColumn,
   ManyToOne,
+  Unique,
 } from 'typeorm';
 import { Favorite } from './favorite.entity';
 
 @Entity('favorite_asset')
+@Unique(['favorite_id', 'asset_type', 'info_id'])
 export class FavoriteAsset {
   @PrimaryGeneratedColumn()
   id: number;

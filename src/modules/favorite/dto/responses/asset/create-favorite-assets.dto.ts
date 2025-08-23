@@ -17,7 +17,8 @@ export class CreatedFavoriteAssetDto {
     description: '자산 정보',
     example: {
       ticker: 'BTC',
-      name: 'Bitcoin',
+      kor_name: '비트코인',
+      eng_name: 'Bitcoin',
       market: 'Binance',
       price: 30200,
       change_price: 300,
@@ -26,7 +27,8 @@ export class CreatedFavoriteAssetDto {
   })
   info: {
     ticker: string;
-    name: string;
+    kor_name: string;
+    eng_name: string;
     market: string;
     price: number;
     change_price: number;
