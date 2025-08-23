@@ -6,14 +6,22 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  OneToOne,
 } from 'typeorm';
 import { CryptoMarket } from './crypto-market.entity';
+import { CryptoMarketData } from './crypto-market-data.entity';
 
 @Entity('crypto_info')
 @Unique(['ticker'])
 export class CryptoInfo {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @OneToOne(
+    () => CryptoMarketData,
+    (cryptoMarketData) => cryptoMarketData.crypto_info,
+  )
+  crypto_market_data: CryptoMarketData;
 
   @Column({ type: 'varchar', length: 150 })
   eng_name: string;

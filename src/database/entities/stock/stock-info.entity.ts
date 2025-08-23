@@ -6,14 +6,22 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  OneToOne,
 } from 'typeorm';
 import { CurrencyCode } from '../code/currency-code.entity';
+import { StockMarketData } from './stock-market-data.entity';
 
 @Entity('stock_info')
 @Unique(['ticker'])
 export class StockInfo {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @OneToOne(
+    () => StockMarketData,
+    (stockMarketData) => stockMarketData.stock_info,
+  )
+  stock_market_data: StockMarketData;
 
   @Column({ type: 'varchar', length: 50 })
   ticker: string;
