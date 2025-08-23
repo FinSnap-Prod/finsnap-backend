@@ -83,34 +83,18 @@ export class FavoriteAssetController {
   @ApiFavoriteFolderParam()
   @ApiCreateFavoriteAssetResponse()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async createFavoriteAsset(
     @Param() createFavoriteAssetParamDto: CreateFavoriteAssetParamDto,
     @Body() createFavoriteAssetBodyDto: CreateFavoriteAssetBodyDto,
+    @User() user: any,
   ): Promise<CreateFavoriteAssetResponseDto> {
-    const { favorite_id } = createFavoriteAssetParamDto;
-    const { asset_type, info_id } = createFavoriteAssetBodyDto;
-
-    // 임시 목업 데이터
-    const createdAsset = {
-      favorite_asset_id: 102,
-      asset_type: asset_type,
-      info_id: info_id,
-      sort_order: 2,
-      info: {
-        ticker: 'BTC',
-        name: 'Bitcoin',
-        market: 'Binance',
-        price: 30200,
-        change_price: 300,
-        change_rate: 1.01,
-      },
-    };
-
-    return {
-      success: true,
-      message: 'Asset added to favorite folder successfully.',
-      data: createdAsset,
-    };
+    return await this.favoriteAssetService.createFavoriteAsset(
+      user.id,
+      createFavoriteAssetParamDto.favorite_id,
+      createFavoriteAssetBodyDto.asset_type,
+      createFavoriteAssetBodyDto.info_id,
+    );
   }
 
   @Delete('items/:item_id')

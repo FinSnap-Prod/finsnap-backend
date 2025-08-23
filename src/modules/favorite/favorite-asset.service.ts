@@ -8,7 +8,7 @@ import { CryptoRepository } from '../investment/crypto/crypto.repository';
 @Injectable()
 export class FavoriteAssetService {
   constructor(
-    private readonly favoriteRepository: FavoriteAssetRepository,
+    private readonly favoriteAssetRepository: FavoriteAssetRepository,
     private readonly stockRepository: StockRepository,
     private readonly etfRepository: EtfRepository,
     private readonly cryptoRepository: CryptoRepository,
@@ -22,7 +22,7 @@ export class FavoriteAssetService {
   ) {
     // 1. 폴더 존재 및 소유자 여부 조회
     const favoriteFolder =
-      await this.favoriteRepository.findFavoriteFolderWithUserId(
+      await this.favoriteAssetRepository.findFavoriteFolderWithUserId(
         Number(favorite_id),
         userId,
       );
@@ -35,9 +35,10 @@ export class FavoriteAssetService {
     }
 
     // 2. favorite_asset 조회
-    const favoriteAssets = await this.favoriteRepository.findFavoriteAssets(
-      Number(favorite_id),
-    );
+    const favoriteAssets =
+      await this.favoriteAssetRepository.findFavoriteAssets(
+        Number(favorite_id),
+      );
 
     if (favoriteAssets.length === 0) {
       return {
@@ -121,6 +122,98 @@ export class FavoriteAssetService {
       success: true,
       message: 'Favorite assets retrieved successfully.',
       data: sortedAssets,
+    };
+  }
+
+  async createFavoriteAsset(
+    userId: string,
+    favorite_id: string,
+    asset_type: string,
+    info_id: string,
+  ) {
+    // 1. 폴더 존재 및 소유자 여부 조회
+    const favoriteFolder =
+      await this.favoriteAssetRepository.findFavoriteFolderWithUserId(
+        Number(favorite_id),
+        userId,
+      );
+
+    if (!favoriteFolder) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('Favorite folder not found'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 2. 중복 추가 여부 조회
+    const existingAsset = await this.favoriteAssetRepository.findFavoriteAsset(
+      Number(favorite_id),
+      asset_type,
+      Number(info_id),
+    );
+
+    if (existingAsset) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('Asset already exists in favorite folder'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // 3. 정렬 순서 최대값 조회
+    const maxSortOrder = await this.favoriteAssetRepository.findMaxSortOrder(
+      Number(favorite_id),
+    );
+    const newSortOrder = maxSortOrder ? maxSortOrder.sort_order + 1 : 1;
+
+    // 4. 자산 추가 및 정렬 순서 업데이트
+    const newAsset = await this.favoriteAssetRepository.createFavoriteAsset(
+      Number(favorite_id),
+      asset_type,
+      Number(info_id),
+      newSortOrder,
+    );
+
+    if (!newAsset) {
+      throw new HttpException(
+        ErrorResponseUtil.badRequest('Failed to add asset to favorite folder'),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // 5. 자산 상세 정보 조회 (이후 메소드 분리 필요)
+    let info;
+
+    switch (newAsset.asset_type) {
+      case 'stock':
+        info = await this.stockRepository.findStockInfo(newAsset.info_id);
+        break;
+      case 'etf':
+        info = await this.etfRepository.findEtfInfo(newAsset.info_id);
+        break;
+      case 'crypto':
+        info = await this.cryptoRepository.findCryptoInfo(newAsset.info_id);
+        break;
+      default:
+        info = null;
+    }
+
+    return {
+      success: true,
+      message: 'Asset added to favorite folder successfully.',
+      data: {
+        favorite_asset_id: newAsset.id,
+        asset_type: newAsset.asset_type,
+        info_id: newAsset.info_id,
+        sort_order: newAsset.sort_order,
+        info: {
+          ticker: info.ticker,
+          kor_name: info.kor_name,
+          eng_name: info.eng_name,
+          market: info.market,
+          price: info.price,
+          change_price: info.change_price,
+          change_rate: info.change_rate,
+        },
+      },
     };
   }
 }
