@@ -7,6 +7,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { FavoriteAssetService } from './favorite-asset.service';
 import {
@@ -37,10 +38,12 @@ import {
   ApiDeleteFavoriteAssetResponse,
   ApiUpdateFavoriteAsset,
 } from 'src/common/swagger';
+import { JwtAuthGuard } from '../auth/guards';
+import { User } from '../auth/decorators/user.decorator';
 
 @ApiTags('favorites')
 @ApiBearerAuth()
-@Controller('favorites/:favorite_id/items')
+@Controller('favorites/:favorite_id')
 export class FavoriteAssetController {
   constructor(private readonly favoriteAssetService: FavoriteAssetService) {}
 
@@ -61,51 +64,21 @@ export class FavoriteAssetController {
   })
   @ApiGetFavoriteAssetsResponse()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async getFavoriteAssets(
     @Param() getFavoriteAssetsParamDto: GetFavoriteAssetsParamDto,
     @Query() getFavoriteAssetsQueryDto: GetFavoriteAssetsQueryDto,
+    @User() user: any,
   ): Promise<GetFavoriteAssetsResponseDto> {
-    const { favorite_id } = getFavoriteAssetsParamDto;
-    const { sortBy = 'name', order = 'asc' } = getFavoriteAssetsQueryDto;
-
-    // 임시 목업 데이터
-    const mockAssets = [
-      {
-        favorite_asset_id: 101,
-        asset_type: 'stock',
-        info_id: 321,
-        info: {
-          ticker: '005930',
-          name: '삼성전자',
-          market: 'KOSPI',
-          price: 73500,
-          change_price: -200,
-          change_rate: -0.27,
-        },
-      },
-      {
-        favorite_asset_id: 102,
-        asset_type: 'crypto',
-        info_id: 555,
-        info: {
-          ticker: 'BTC',
-          name: 'Bitcoin',
-          market: 'Binance',
-          price: 30200,
-          change_price: 300,
-          change_rate: 1.01,
-        },
-      },
-    ];
-
-    return {
-      success: true,
-      message: 'Favorite Assets retrieved successfully.',
-      data: mockAssets,
-    };
+    return await this.favoriteAssetService.getFavoriteAssets(
+      user.id,
+      getFavoriteAssetsParamDto.favorite_id,
+      getFavoriteAssetsQueryDto.sortBy || '',
+      getFavoriteAssetsQueryDto.order || '',
+    );
   }
 
-  @Post()
+  @Post('items')
   @ApiOperation({ summary: '관심종목 자산 추가' })
   @ApiFavoriteFolderParam()
   @ApiCreateFavoriteAssetResponse()
@@ -140,7 +113,7 @@ export class FavoriteAssetController {
     };
   }
 
-  @Delete(':item_id')
+  @Delete('items/:item_id')
   @ApiOperation({ summary: '관심종목 자산 삭제' })
   @ApiFavoriteAssetParams()
   @ApiDeleteFavoriteAssetResponse()
@@ -154,7 +127,7 @@ export class FavoriteAssetController {
     };
   }
 
-  @Put()
+  @Put('items')
   @ApiOperation({ summary: '관심종목 편집 (정렬)' })
   @ApiFavoriteFolderParam()
   @ApiUpdateFavoriteAsset()
