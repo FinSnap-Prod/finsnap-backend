@@ -4,6 +4,7 @@ import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { StockRepository } from '../investment/stock/stock.repository';
 import { EtfRepository } from '../investment/etf/etf.repository';
 import { CryptoRepository } from '../investment/crypto/crypto.repository';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class FavoriteAssetService {
@@ -215,5 +216,48 @@ export class FavoriteAssetService {
         },
       },
     };
+  }
+
+  async deleteFavoriteAsset(
+    userId: string,
+    favorite_id: string,
+    favorite_asset_id: string,
+  ) {
+    try {
+      return await this.favoriteAssetRepository.executeDeleteFavoriteAssetTransaction(
+        userId,
+        Number(favorite_id),
+        Number(favorite_asset_id),
+      );
+    } catch (error) {
+      if (error.message === 'Favorite folder not found') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Favorite folder not found'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (error.message === 'Favorite asset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Favorite asset not found'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (error.message === 'Failed to delete asset from favorite folder') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(
+            'Failed to delete asset from favorite folder',
+          ),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // 예상치 못한 에러
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('An unexpected error occurred'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

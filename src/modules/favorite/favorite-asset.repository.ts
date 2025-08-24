@@ -68,4 +68,73 @@ export class FavoriteAssetRepository {
 
     return this.favoriteAssetRepository.save(newAsset);
   }
+
+  async updateSortOrder(favoriteId: number, deletedSortOrder: number) {
+    await this.favoriteAssetRepository
+      .createQueryBuilder()
+      .update(FavoriteAsset)
+      .set({
+        sort_order: () => 'sort_order - 1',
+      })
+      .where('favorite_id = :favoriteId AND sort_order > :deletedSortOrder', {
+        favoriteId,
+        deletedSortOrder,
+      })
+      .execute();
+  }
+
+  async executeDeleteFavoriteAssetTransaction(
+    userId: string,
+    favoriteId: number,
+    favoriteAssetId: number,
+  ) {
+    return this.dataSource.transaction(async (entityManager) => {
+      // 1. 폴더 존재 및 소유자 여부 조회
+      const favoriteFolder = await entityManager.findOne(Favorite, {
+        where: { id: favoriteId, user_id: userId },
+      });
+
+      if (!favoriteFolder) {
+        throw new Error('Favorite folder not found');
+      }
+
+      // 2. 자산 존재 여부 조회
+      const favoriteAsset = await entityManager.findOne(FavoriteAsset, {
+        where: { favorite_id: favoriteId, id: favoriteAssetId },
+      });
+
+      if (!favoriteAsset) {
+        throw new Error('Favorite asset not found');
+      }
+
+      // 3. 자산 삭제
+      const deletedAsset = await entityManager.delete(FavoriteAsset, {
+        favorite_id: favoriteId,
+        id: favoriteAssetId,
+      });
+
+      if (!deletedAsset.affected || deletedAsset.affected === 0) {
+        throw new Error('Failed to delete asset from favorite folder');
+      }
+
+      // 4. 자산 삭제 후 정렬 순서 업데이트
+      await entityManager
+        .createQueryBuilder()
+        .update(FavoriteAsset)
+        .set({
+          sort_order: () => 'sort_order - 1',
+        })
+        .where('favorite_id = :favoriteId AND sort_order > :deletedSortOrder', {
+          favoriteId,
+          deletedSortOrder: favoriteAsset.sort_order,
+        })
+        .execute();
+
+      // 성공 시 응답
+      return {
+        success: true,
+        message: 'Favorite asset deleted successfully.',
+      };
+    });
+  }
 }

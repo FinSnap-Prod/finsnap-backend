@@ -8,7 +8,7 @@ export class DeleteFavoriteAssetParamDto {
   })
   @IsNumber()
   @IsPositive()
-  favorite_id: number;
+  favorite_id: string;
 
   @ApiProperty({
     description: '관심종목 자산 ID',
@@ -16,5 +16,5 @@ export class DeleteFavoriteAssetParamDto {
   })
   @IsNumber()
   @IsPositive()
-  item_id: number;
+  favorite_asset_id: string;
 }
