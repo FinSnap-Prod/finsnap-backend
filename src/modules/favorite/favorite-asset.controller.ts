@@ -97,18 +97,21 @@ export class FavoriteAssetController {
     );
   }
 
-  @Delete('items/:item_id')
+  @Delete('items/:favorite_asset_id')
   @ApiOperation({ summary: '관심종목 자산 삭제' })
   @ApiFavoriteAssetParams()
   @ApiDeleteFavoriteAssetResponse()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async deleteFavoriteAsset(
     @Param() deleteFavoriteAssetParamDto: DeleteFavoriteAssetParamDto,
+    @User() user: any,
   ): Promise<DeleteFavoriteAssetResponseDto> {
-    return {
-      success: true,
-      message: 'Asset removed from favorite folder successfully.',
-    };
+    return await this.favoriteAssetService.deleteFavoriteAsset(
+      user.id,
+      deleteFavoriteAssetParamDto.favorite_id,
+      deleteFavoriteAssetParamDto.favorite_asset_id,
+    );
   }
 
   @Put('items')

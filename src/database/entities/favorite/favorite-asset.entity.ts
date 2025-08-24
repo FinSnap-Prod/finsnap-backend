@@ -17,7 +17,9 @@ export class FavoriteAsset {
   @Column({ type: 'int' })
   favorite_id: number;
 
-  @ManyToOne(() => Favorite)
+  @ManyToOne(() => Favorite, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'favorite_id' })
   favorite: Favorite;
 
