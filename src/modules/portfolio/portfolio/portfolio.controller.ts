@@ -8,6 +8,7 @@ import {
   Put,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
 import {
@@ -74,7 +75,9 @@ import {
   UpdatePortfolioParamDto,
   UpdatePortfolioRequestDto,
   UpdatePortfolioResponseDto,
-} from './dto';
+} from '../dto';
+import { JwtAuthGuard } from 'src/modules/auth/guards';
+import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @ApiTags('portfolio')
 @ApiBearerAuth()
@@ -117,22 +120,15 @@ export class PortfolioController {
   @ApiOperation({ summary: '포트폴리오 생성' })
   @ApiCreatePortfolio()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async createPortfolio(
     @Body() createPortfolioRequestDto: CreatePortfolioRequestDto,
+    @User() user: any,
   ): Promise<CreatePortfolioResponseDto> {
-    const mockData: CreatePortfolioResponseDto = {
-      success: true,
-      message: 'Portfolio created successfully.',
-      data: {
-        portfolio_id: 5,
-        name: '배당주 투자',
-        total_eval_amount: 0,
-        total_profit_loss: 0,
-        total_profit_rate: 0,
-        sort_order: 3,
-      },
-    };
-    return mockData;
+    return await this.portfolioService.createPortfolio(
+      user.id,
+      createPortfolioRequestDto.name,
+    );
   }
 
   @Delete(':portfolio_id')

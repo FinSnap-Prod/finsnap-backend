@@ -24,13 +24,13 @@ export class Portfolio {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'numeric', precision: 20, scale: 2 })
+  @Column({ type: 'numeric', precision: 20, scale: 2, default: 0 })
   total_eval_amount: string;
 
-  @Column({ type: 'numeric', precision: 20, scale: 2 })
+  @Column({ type: 'numeric', precision: 20, scale: 2, default: 0 })
   total_profit_loss: string;
 
-  @Column({ type: 'numeric', precision: 10, scale: 5 })
+  @Column({ type: 'numeric', precision: 10, scale: 5, default: 0 })
   total_rate: string;
 
   @CreateDateColumn({ name: 'created_at' })

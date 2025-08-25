@@ -197,37 +197,133 @@ assignees: '[담당자명]'
 - 쿠키 삭제 (clearCookie)
 ```
 
-### 📝 Notion 기능구현 페이지 예시 (회원탈퇴 기능)
+### 📝 Notion 기능구현 페이지 예시 (관심종목 정렬 순서 편집 기능)
 
 ```markdown
 ## 📌 기능 설명
 
-사용자가 계정을 탈퇴(소프트 삭제)하는 기능.
-`User.deleted = true`와 `deleted_at`을 기록하여 계정을 비활성화하고,
-인증 수단(AT/RT)을 즉시 무효화한다.
-탈퇴 후 모든 접근을 차단하여 보안을 강화한다.
+사용자가 특정 폴더 내 관심종목들의 정렬 순서를 편집하는 기능.
+드래그 앤 드롭이나 수동 입력을 통해 관심종목들의 순서를 변경할 수 있으며,
+변경된 순서는 데이터베이스에 즉시 반영된다.
 
 ## 🧷 기능 흐름
 
-**사용자 (User)**
+### **관심종목 정렬 순서 편집**
 
-1. 마이페이지의 "회원탈퇴" 진입
-2. 경고/안내(탈퇴 후 영향) 확인
-3. 탈퇴 사유 입력 (선택사항)
+1. **사용자**:
+   1. 관심종목 목록에서 편집 모드 진입
+   2. 드래그 앤 드롭으로 관심종목 순서 변경 또는 수동으로 순서 입력
+   3. "저장" 버튼 클릭
 
-**프론트엔드 (FE)**
+2. **프론트엔드 (FE)**:
+   1. 변경된 정렬 순서를 배열로 구성
+   2. **PUT** `/api/favorites/{favorite_id}/items` 호출 (JWT 토큰, favoriteAssets 배열 포함)
+   3. 로딩 상태 표시
 
-1. 탈퇴 확인 다이얼로그 표시
-2. **DELETE** /api/user/me 호출
-3. 성공/실패 응답 처리
+3. **백엔드 (BE)**:
+   1. JWT 검증 (JwtAuthGuard)
+   2. 사용자 ID 추출 및 검증
+   3. Path Parameter 검증 (favorite_id)
+   4. Request Body 검증 (favoriteAssets 배열, 각 항목의 id, sort_order)
+   5. 폴더 존재 여부 확인
+   6. 폴더 소유권 검증 (사용자 ID 일치)
+   7. 관심종목 존재 여부 검증 (요청된 관심종목들이 해당 폴더에 존재하는지)
+   8. 정렬 순서 중복 검증 (동일한 sort_order 값이 중복되지 않는지)
+   9. **배치 업데이트**: 데이터베이스에서 각 관심종목의 sort_order 일괄 업데이트
+   10. 200 OK 응답 및 업데이트된 관심종목 목록 반환
 
-**백엔드 (BE)**
+4. **프론트엔드 (FE)**:
+   1. 성공 시: 성공 메시지 표시 및 관심종목 목록 실시간 업데이트
+   2. 실패 시: 에러 메시지 표시
 
-1. JWT 검증 (JwtAuthGuard)
-2. 사용자 정보 조회
-3. 소프트 삭제 처리
-4. 인증 토큰 무효화
-5. 응답 반환
+### **배치 업데이트 처리**
+
+1. **사용자**: 여러 관심종목의 순서를 동시에 변경
+2. **백엔드**: 트랜잭션 내에서 모든 관심종목의 sort_order를 일괄 업데이트
+3. **프론트엔드**: 업데이트된 전체 목록을 화면에 반영
+
+## 🔗 관련 API
+
+| Number | Method | Path                                 | Summary                        | Notion Page                                                                                            |
+| ------ | ------ | ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| 1      | PUT    | `/api/favorites/{favorite_id}/items` | 관심종목 편집 (정렬 순서 변경) | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+
+## 🛠️ 연관 DTO
+
+| API_Number | DTO_Name                          | Summary                                                  | Notion Page                                                                                            |
+| ---------- | --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1          | `FavoriteAssetPathParamsDto`      | Path Parameter (favorite_id)                             | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdateFavoriteAssetsBodyDto`     | Request Body (favoriteAssets 배열)                       | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `FavoriteAssetUpdateItem`         | 개별 관심종목 업데이트 항목 (id, sort_order)             | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdateFavoriteAssetsResponseDto` | 응답 데이터 구조                                         | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdatedFavoriteAsset`            | 업데이트된 관심종목 정보 (favorite_asset_id, sort_order) | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+
+## 🏁 구현 체크리스트
+
+### **프론트엔드**
+
+- [ ] 관심종목 편집 모드 UI 구현
+- [ ] 드래그 앤 드롭 기능 구현
+- [ ] 수동 순서 입력 UI 구현
+- [ ] "저장" 버튼 및 로딩 상태
+- [ ] 성공 시 관심종목 목록 실시간 업데이트
+- [ ] 에러 처리 및 사용자 피드백
+
+### **백엔드**
+
+- [x] `FavoriteAssetController`에 PUT 엔드포인트 추가
+- [x] Path Parameter 검증 로직 구현 (favorite_id)
+- [x] Request Body 검증 로직 구현 (favoriteAssets 배열, 각 항목의 id, sort_order)
+- [x] JWT 인증 연동
+- [x] 폴더 소유권 검증 로직
+- [x] 관심종목 존재 여부 검증 로직
+- [x] 정렬 순서 중복 검증 로직
+- [x] **배치 업데이트 로직**: 여러 관심종목의 sort_order 일괄 업데이트
+- [x] 응답 DTO 구조 구현
+
+### **공통**
+
+- [x] API 문서화 (Swagger)
+- [ ] 단위 테스트 작성
+- [x] 통합 테스트 작성
+- [ ] 에러 응답 표준화 적용
+
+## 🔒 보안 고려사항
+
+- **JWT 인증**: 모든 요청에 JWT 토큰 검증 필수
+- **권한 검증**: 사용자는 본인의 폴더에서만 관심종목 편집 가능
+- **입력 검증**: Path Parameter와 Request Body에 대한 유효성 검사
+- **데이터 무결성**: 트랜잭션을 통한 배치 업데이트로 데이터 일관성 유지
+- **에러 처리**: 민감한 정보가 노출되지 않도록 에러 메시지 관리
+
+## 🚨 예외 상황
+
+### **1순위 (핵심)**
+
+- **JWT 토큰 만료**: 401 Unauthorized 응답
+- **JWT 토큰 부재**: 401 Unauthorized 응답
+- **폴더 소유권 없음**: 403 Forbidden + "편집 권한이 없습니다"
+- **존재하지 않는 폴더**: 404 Not Found + "존재하지 않는 폴더입니다"
+
+### **2순위 (입력값 검증)**
+
+- **잘못된 폴더 ID 형식**: 400 Bad Request + "올바른 폴더 ID를 입력해주세요"
+- **잘못된 Request Body 형식**: 400 Bad Request + "올바른 요청 형식을 입력해주세요"
+- **favoriteAssets 배열 누락**: 400 Bad Request + "관심종목 배열을 입력해주세요"
+- **필수 필드 누락**: 400 Bad Request + "필수 정보를 모두 입력해주세요"
+
+### **3순위 (비즈니스 로직)**
+
+- **존재하지 않는 관심종목**: 404 Not Found + "존재하지 않는 관심종목입니다"
+- **정렬 순서 중복**: 400 Bad Request + "중복된 정렬 순서가 있습니다"
+- **잘못된 정렬 순서**: 400 Bad Request + "올바른 정렬 순서를 입력해주세요"
+
+### **기타**
+
+- **데이터베이스 연결 실패**: 500 Internal Server Error 응답
+- **트랜잭션 실패**: 500 Internal Server Error 응답
+- **사용자 정보 없음**: 404 Not Found 응답
+- **시스템 오류**: 500 Internal Server Error + "일시적인 오류가 발생했습니다"
 ```
 
 ---

@@ -16,10 +16,10 @@ import { UpdateCategoryResponseDto } from '../../../modules/portfolio/dto/respon
 import { CreateAssetHistoryRequestDto } from '../../../modules/portfolio/dto/requests/asset/create-asset-history.dto';
 import { CreateAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset/create-asset-history.dto';
 import { DeleteAssetResponseDto } from '../../../modules/portfolio/dto/responses/asset/delete-asset.dto';
-import { GetAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset/get-asset-history.dto';
-import { DeleteAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset/delete-asset-history.dto';
-import { UpdateAssetHistoryRequestDto } from '../../../modules/portfolio/dto/requests/asset/update-asset-history.dto';
-import { UpdateAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset/update-asset-history.dto';
+import { GetAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset-history/get-asset-history.dto';
+import { DeleteAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset-history/delete-asset-history.dto';
+import { UpdateAssetHistoryRequestDto } from '../../../modules/portfolio/dto/requests/asset-history/update-asset-history.dto';
+import { UpdateAssetHistoryResponseDto } from '../../../modules/portfolio/dto/responses/asset-history/update-asset-history.dto';
 
 // Portfolio Parameter Decorators
 /**
