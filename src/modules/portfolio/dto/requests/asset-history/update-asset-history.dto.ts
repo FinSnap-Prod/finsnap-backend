@@ -7,7 +7,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { CurrencyCode, TradeType } from './create-asset-history.dto';
+import { CurrencyCode, TradeType } from '../asset/create-asset-history.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateAssetHistoryParamsDto {
