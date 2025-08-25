@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsPositive,
+  IsArray,
+  ValidateNested,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 // 개별 관심종목 아이템 DTO
@@ -10,7 +16,7 @@ export class UpdateFavoriteAssetItemDto {
   })
   @IsNumber()
   @IsPositive()
-  id: number;
+  favorite_asset_id: number;
 
   @ApiProperty({
     description: '정렬 순서',
@@ -44,7 +50,6 @@ export class UpdateFavoriteAssetParamsDto {
     description: '관심종목 폴더 ID',
     example: 11,
   })
-  @IsNumber()
-  @IsPositive()
-  favorite_id: number;
+  @IsString()
+  favorite_id: string;
 }
