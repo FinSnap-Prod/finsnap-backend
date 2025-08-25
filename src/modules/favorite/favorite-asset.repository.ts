@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Favorite } from 'src/database/entities/favorite/favorite.entity';
 import { FavoriteAsset } from 'src/database/entities/favorite/favorite-asset.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import { UpdateFavoriteAssetItemDto } from './dto';
 
 @Injectable()
 export class FavoriteAssetRepository {
@@ -135,6 +136,65 @@ export class FavoriteAssetRepository {
         success: true,
         message: 'Favorite asset deleted successfully.',
       };
+    });
+  }
+
+  async executeUpdateFavoriteAssetTransaction(
+    userId: string,
+    favoriteId: number,
+    favoriteAssets: UpdateFavoriteAssetItemDto[],
+  ) {
+    return this.dataSource.transaction(async (entityManager) => {
+      // 1. 폴더 존재 및 소유자 여부 조회
+      const existingFolder = await entityManager.findOne(Favorite, {
+        where: { id: favoriteId, user_id: userId },
+      });
+
+      if (!existingFolder) {
+        throw new Error('Favorite folder not found');
+      }
+
+      // 2. 관심종목 존재 여부 검증
+      const assetIds = favoriteAssets.map((asset) => asset.favorite_asset_id);
+      const existingAssets = await entityManager.find(FavoriteAsset, {
+        where: { favorite_id: favoriteId, id: In(assetIds) },
+      });
+
+      if (existingAssets.length !== assetIds.length) {
+        throw new Error('Some favorite assets not found');
+      }
+
+      // 3. 정렬 순서 중복 검증
+      const sortOrders = favoriteAssets.map((asset) => asset.sort_order);
+      const uniqueSortOrders = new Set(sortOrders);
+
+      if (sortOrders.length !== uniqueSortOrders.size) {
+        throw new Error('Duplicate sort orders are not allowed');
+      }
+
+      // 4. 각 자산의 정렬 순서 업데이트
+      for (const asset of favoriteAssets) {
+        const result = await entityManager
+          .createQueryBuilder()
+          .update(FavoriteAsset)
+          .set({ sort_order: asset.sort_order })
+          .where('id = :assetId AND favorite_id = :favoriteId', {
+            assetId: asset.favorite_asset_id,
+            favoriteId,
+          })
+          .execute();
+
+        // 업데이트 결과 확인
+        if (!result.affected || result.affected === 0) {
+          throw new Error(`Failed to update asset ${asset.favorite_asset_id}`);
+        }
+      }
+
+      // 5. 수정된 자산 조회
+      return entityManager.find(FavoriteAsset, {
+        where: { favorite_id: favoriteId },
+        order: { sort_order: 'ASC' },
+      });
     });
   }
 }

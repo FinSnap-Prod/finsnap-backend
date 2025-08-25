@@ -119,14 +119,16 @@ export class FavoriteAssetController {
   @ApiFavoriteFolderParam()
   @ApiUpdateFavoriteAsset()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async updateFavoriteAsset(
     @Param() updateFavoriteAssetParamDto: UpdateFavoriteAssetParamsDto,
     @Body() updateFavoriteAssetBodyDto: UpdateFavoriteAssetBodyDto,
+    @User() user: any,
   ): Promise<UpdateFavoriteAssetResponseDto> {
-    return {
-      success: true,
-      message: 'Favorite assets order updated successfully.',
-      data: updateFavoriteAssetBodyDto.favoriteAssets,
-    };
+    return await this.favoriteAssetService.updateFavoriteAsset(
+      user.id,
+      updateFavoriteAssetParamDto.favorite_id,
+      updateFavoriteAssetBodyDto.favoriteAssets,
+    );
   }
 }
