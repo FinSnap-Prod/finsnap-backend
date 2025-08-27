@@ -1,15 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Portfolio } from 'src/database/entities/portfolio/portfolio.entity';
-import { DataSource, Repository } from 'typeorm';
+import { User } from 'src/database/entities/user/user.entity';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class PortfolioRepository {
-  constructor(
-    @InjectRepository(Portfolio)
-    private portfolioRepository: Repository<Portfolio>,
-    private dataSource: DataSource,
-  ) {}
+  constructor(private dataSource: DataSource) {}
+
+  async executeFindAllPortfolio(userId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 유저 조회
+      const user = await manager.findOne(User, { where: { id: userId } });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // 2. 포트폴리오 조회
+      const portfolios = await manager.find(Portfolio, {
+        where: { user_id: userId },
+        order: { sort_order: 'ASC' },
+      });
+
+      // 3. 반환
+      return portfolios;
+    });
+  }
 
   async executeCreatePortfolioTransaction(userId: string, name: string) {
     return this.dataSource.transaction(async (manager) => {

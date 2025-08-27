@@ -6,6 +6,38 @@ import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 export class PortfolioService {
   constructor(private readonly portfolioRepository: PortfolioRepository) {}
 
+  async getAllPortfolio(userId: string) {
+    try {
+      const portfolios =
+        await this.portfolioRepository.executeFindAllPortfolio(userId);
+
+      return {
+        success: true,
+        message: 'Portfolios retrieved successfully.',
+        data: portfolios.map((portfolio) => ({
+          portfolio_id: portfolio.id,
+          name: portfolio.name,
+          total_eval_amount: portfolio.total_eval_amount,
+          total_profit_loss: portfolio.total_profit_loss,
+          total_profit_rate: portfolio.total_rate,
+          sort_order: portfolio.sort_order,
+        })),
+      };
+    } catch (error) {
+      if (error.message === 'User not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('User not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(error.message),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async createPortfolio(userId: string, name: string) {
     try {
       const portfolio =

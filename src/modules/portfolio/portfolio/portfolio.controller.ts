@@ -89,31 +89,11 @@ export class PortfolioController {
   @ApiOperation({ summary: '포트폴리오 조회' })
   @ApiGetAllPortfolioResponse()
   @ApiCommonErrorResponses()
-  async getAllPortfolio(): Promise<GetAllPortfolioResponseDto> {
-    const mockData: GetAllPortfolioResponseDto = {
-      success: true,
-      message: 'Portfolios retrieved successfully.',
-      data: [
-        {
-          portfolio_id: 1,
-          name: '배당주 투자',
-          total_eval_amount: 12500000,
-          total_profit_loss: 250000,
-          total_profit_rate: 0.02,
-          sort_order: 1,
-        },
-        {
-          portfolio_id: 2,
-          name: '해외 성장주',
-          total_eval_amount: 6700000,
-          total_profit_loss: -300000,
-          total_profit_rate: -0.045,
-          sort_order: 2,
-        },
-      ],
-    };
-
-    return mockData;
+  @UseGuards(JwtAuthGuard)
+  async getAllPortfolio(
+    @User() user: any,
+  ): Promise<GetAllPortfolioResponseDto> {
+    return await this.portfolioService.getAllPortfolio(user.id);
   }
 
   @Post()
