@@ -25,13 +25,13 @@ export class Portfolio {
   name: string;
 
   @Column({ type: 'numeric', precision: 20, scale: 2, default: 0 })
-  total_eval_amount: string;
+  total_eval_amount: number;
 
   @Column({ type: 'numeric', precision: 20, scale: 2, default: 0 })
-  total_profit_loss: string;
+  total_profit_loss: number;
 
   @Column({ type: 'numeric', precision: 10, scale: 5, default: 0 })
-  total_rate: string;
+  total_rate: number;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

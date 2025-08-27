@@ -25,10 +25,17 @@ import { PortfolioRepository } from './portfolio/portfolio.repository';
 import { CategoryRepository } from './category/category.repository';
 import { AssetRepository } from './asset/asset.repository';
 import { AssetHistoryRepository } from './asset-history/asset-history.repository';
+import { User } from 'src/database/entities/user/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Portfolio, Category, UserAsset, AssetHistory]),
+    TypeOrmModule.forFeature([
+      Portfolio,
+      Category,
+      UserAsset,
+      AssetHistory,
+      User,
+    ]),
     InvestmentModule,
   ],
   controllers: [
