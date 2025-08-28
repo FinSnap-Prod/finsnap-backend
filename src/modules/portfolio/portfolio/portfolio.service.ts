@@ -148,41 +148,27 @@ export class PortfolioService {
     }
   }
 
-  async updatePortfolio(portfolios: UpdatePortfolioItemDto[], userId: string) {
+  async getPortfolioSummary(portfolioId: number, userId: string) {
     try {
-      const updatedPortfolios =
-        await this.portfolioRepository.executeUpdatePortfolioTransaction(
-          portfolios,
+      const portfolioSummary =
+        await this.portfolioRepository.executeGetPortfolioSummary(
+          portfolioId,
           userId,
         );
 
       return {
         success: true,
-        message: 'Portfolio updated successfully.',
-        data: updatedPortfolios.map((portfolio) => ({
-          portfolio_id: portfolio.id,
-          name: portfolio.name,
-          total_eval_amount: portfolio.total_eval_amount,
-          total_profit_loss: portfolio.total_profit_loss,
-          total_profit_rate: portfolio.total_rate,
-          sort_order: portfolio.sort_order,
-        })),
+        message: 'Portfolio summary retrieved successfully.',
+        data: portfolioSummary,
       };
     } catch (error) {
-      if (error.message === 'Some portfolios not found or access denied') {
+      if (error.message === 'Portfolio not found') {
         throw new HttpException(
-          ErrorResponseUtil.notFound(
-            'Some portfolios not found or access denied',
-          ),
+          ErrorResponseUtil.notFound('Portfolio not found'),
           HttpStatus.NOT_FOUND,
         );
       }
-      if (error.message === 'Sort order must be unique') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Sort order must be unique'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+
       throw new HttpException(
         ErrorResponseUtil.internalServerError(error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,

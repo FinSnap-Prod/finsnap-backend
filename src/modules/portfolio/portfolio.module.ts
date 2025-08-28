@@ -26,6 +26,9 @@ import { CategoryRepository } from './category/category.repository';
 import { AssetRepository } from './asset/asset.repository';
 import { AssetHistoryRepository } from './asset-history/asset-history.repository';
 import { User } from 'src/database/entities/user/user.entity';
+import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
+import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
+import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
 
 @Module({
   imports: [
@@ -35,6 +38,9 @@ import { User } from 'src/database/entities/user/user.entity';
       UserAsset,
       AssetHistory,
       User,
+      StockInfo,
+      CryptoInfo,
+      EtfInfo,
     ]),
     InvestmentModule,
   ],
