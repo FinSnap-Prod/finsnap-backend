@@ -146,39 +146,15 @@ export class PortfolioController {
   @ApiPortfolioParam()
   @ApiGetPortfolioSummaryResponse()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async getPortfolioSummary(
     @Param() getPortfolioSummaryParamDto: GetPortfolioSummaryParamDto,
+    @User() user: any,
   ): Promise<GetPortfolioSummaryResponseDto> {
-    const mockData: GetPortfolioSummaryResponseDto = {
-      success: true,
-      message: 'Portfolio summary retrieved successfully.',
-      data: {
-        portfolio_id: 1,
-        portfolio_name: '배당주 투자',
-        total_eval_amount: 12500000,
-        total_profit_loss: 250000,
-        total_rate: 0.02,
-        created_at: '2021-01-01',
-        updated_at: '2021-01-01',
-        assets: [
-          {
-            asset_id: 1,
-            asset_name: '삼성전자',
-            eval_amount: 12500000,
-            weighting: 0.02,
-          },
-        ],
-        categories: [
-          {
-            category_id: 1,
-            category_name: '주식',
-            eval_amount: 12500000,
-            weighting: 0.02,
-          },
-        ],
-      },
-    };
-    return mockData;
+    return await this.portfolioService.getPortfolioSummary(
+      Number(getPortfolioSummaryParamDto.portfolio_id),
+      user.id,
+    );
   }
 
   @Get(':portfolio_id/categories/:category_id')
