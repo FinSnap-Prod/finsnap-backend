@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
@@ -72,7 +71,6 @@ import {
   UpdateCategoryParamDto,
   UpdateCategoryRequestDto,
   UpdateCategoryResponseDto,
-  UpdatePortfolioParamDto,
   UpdatePortfolioRequestDto,
   UpdatePortfolioResponseDto,
 } from '../dto';
@@ -127,30 +125,20 @@ export class PortfolioController {
     );
   }
 
-  @Put(':portfolio_id')
+  @Put()
   @ApiOperation({ summary: '포트폴리오 수정' })
   @ApiPortfolioParam()
   @ApiUpdatePortfolio()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async updatePortfolio(
-    @Param() updatePortfolioParamDto: UpdatePortfolioParamDto,
     @Body() updatePortfolioRequestDto: UpdatePortfolioRequestDto,
+    @User() user: any,
   ): Promise<UpdatePortfolioResponseDto> {
-    const mockData: UpdatePortfolioResponseDto = {
-      success: true,
-      message: 'Portfolio updated successfully.',
-      data: [
-        {
-          portfolio_id: 1,
-          name: '배당주 투자',
-          total_eval_amount: 12500000,
-          total_profit_loss: 250000,
-          total_profit_rate: 0.02,
-          sort_order: 1,
-        },
-      ],
-    };
-    return mockData;
+    return await this.portfolioService.updatePortfolio(
+      updatePortfolioRequestDto.portfolios,
+      user.id,
+    );
   }
 
   @Get(':portfolio_id')

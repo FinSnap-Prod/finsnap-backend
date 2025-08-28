@@ -5,20 +5,8 @@ import {
   IsString,
   Length,
   ValidateNested,
-  IsPositive,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export class UpdatePortfolioParamDto {
-  @ApiProperty({
-    description: '포트폴리오 ID',
-    example: 1,
-    minimum: 1,
-  })
-  @IsInt()
-  @IsPositive()
-  portfolio_id: number;
-}
 
 export class UpdatePortfolioItemDto {
   @ApiProperty({ description: '포트폴리오 ID', example: 1 })
