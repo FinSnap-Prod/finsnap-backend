@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PortfolioRepository } from './portfolio.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
-import { DeletePortfolioParamDto } from '../dto';
+import { DeletePortfolioParamDto, UpdatePortfolioItemDto } from '../dto';
 
 @Injectable()
 export class PortfolioService {
@@ -91,6 +91,48 @@ export class PortfolioService {
       return {
         success: true,
         message: 'Portfolio deleted successfully.',
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.status === 400) {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(error.message),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(error.message),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async updatePortfolio(portfolios: UpdatePortfolioItemDto[], userId: string) {
+    try {
+      const updatedPortfolios =
+        await this.portfolioRepository.executeUpdatePortfolioTransaction(
+          portfolios,
+          userId,
+        );
+
+      return {
+        success: true,
+        message: 'Portfolio updated successfully.',
+        data: updatedPortfolios.map((portfolio) => ({
+          portfolio_id: portfolio.id,
+          name: portfolio.name,
+          total_eval_amount: portfolio.total_eval_amount,
+          total_profit_loss: portfolio.total_profit_loss,
+          total_profit_rate: portfolio.total_rate,
+          sort_order: portfolio.sort_order,
+        })),
       };
     } catch (error) {
       if (error.message === 'Portfolio not found') {

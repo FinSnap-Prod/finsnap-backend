@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Portfolio } from 'src/database/entities/portfolio/portfolio.entity';
 import { User } from 'src/database/entities/user/user.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
+import { UpdatePortfolioItemDto } from '../dto';
 
 @Injectable()
 export class PortfolioRepository {
@@ -98,6 +99,55 @@ export class PortfolioRepository {
           deletedSortOrder,
         })
         .execute();
+    });
+  }
+
+  async executeUpdatePortfolioTransaction(
+    portfolios: UpdatePortfolioItemDto[],
+    userId: string,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 포트폴리오 존재 여부 및 소유자 여부 조회
+      const portfolioIds = portfolios.map((portfolio) => portfolio.id);
+      const existingPortfolios = await manager.find(Portfolio, {
+        where: { id: In(portfolioIds), user_id: userId },
+      });
+
+      if (existingPortfolios.length !== portfolioIds.length) {
+        throw new Error('Some portfolios not found or access denied');
+      }
+
+      // 2. 정렬 순서 중복 검증
+      const sortOrderSet = portfolios.map((portfolio) => portfolio.sort_order);
+      const uniqueSortOrders = new Set(sortOrderSet);
+
+      if (uniqueSortOrders.size !== portfolios.length) {
+        throw new Error('Sort order must be unique');
+      }
+
+      // 3. 포트폴리오 업데이트
+      for (const portfolio of portfolios) {
+        await manager
+          .createQueryBuilder()
+          .update(Portfolio)
+          .set({
+            name: portfolio.name,
+            sort_order: portfolio.sort_order,
+          })
+          .where('id = :id AND user_id = :userId', {
+            id: portfolio.id,
+            userId,
+          })
+          .execute();
+      }
+
+      // 4. 목록 반환
+      const updatedPortfolios = await manager.find(Portfolio, {
+        where: { id: In(portfolioIds), user_id: userId },
+        order: { sort_order: 'ASC' },
+      });
+
+      return updatedPortfolios;
     });
   }
 }
