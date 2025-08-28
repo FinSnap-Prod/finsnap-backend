@@ -62,4 +62,42 @@ export class PortfolioRepository {
       return createdPortfolio;
     });
   }
+
+  async executeDeletePortfolioTransaction(
+    portfolioId: number,
+    userId: string,
+  ): Promise<void> {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 포트폴리오 존재 및 소유자 여부 조회
+      const existingPortfolio = await manager.findOne(Portfolio, {
+        where: {
+          id: portfolioId,
+          user_id: userId,
+        },
+      });
+
+      if (!existingPortfolio) {
+        throw new Error('Portfolio not found');
+      }
+
+      // 2. 삭제 포트폴리오 정렬 번호 조회
+      const deletedSortOrder = existingPortfolio.sort_order;
+
+      // 3. 포트폴리오 삭제
+      await manager.delete(Portfolio, { id: portfolioId });
+
+      // 4. 정렬 순서 업데이트
+      await manager
+        .createQueryBuilder()
+        .update(Portfolio)
+        .set({
+          sort_order: () => 'sort_order - 1',
+        })
+        .where('user_id = :userId AND sort_order > :deletedSortOrder', {
+          userId,
+          deletedSortOrder,
+        })
+        .execute();
+    });
+  }
 }
