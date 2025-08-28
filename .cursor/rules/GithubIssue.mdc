@@ -1,0 +1,292 @@
+---
+alwaysApply: true
+---
+
+## 📝 GitHub Issue 템플릿 규칙
+
+### 📋 기본 구조
+
+```yaml
+---
+name: 기능 구현
+about: 기능 설명 및 구현
+title: '[기능명] 기능 구현'
+labels: 기능구현
+assignees: '[담당자명]'
+---
+```
+
+### 📋 필수 섹션
+
+#### 1. ✨ 구현 할 기능
+
+- **기능 요약**: 한 문장으로 기능 설명
+- **상세 설명**: 기능의 목적과 필요성
+- **핵심 특징**: 주요 기능 포인트 (bullet points)
+
+#### 2. 🍈 주요 요구사항
+
+- **API 엔드포인트**: Method와 Path 명시
+- **Path Parameters**: URL 경로 변수 상세 설명
+- **Request Body**: 요청 데이터 구조 (JSON 예시 포함)
+- **인증 필요 여부**: JWT, OAuth 등
+- **데이터베이스 활용**: 엔티티 활용 및 변경사항
+- **보안 강화**: 토큰, 권한 검증 등
+
+#### 3. 📢 구현 방식
+
+- **아키텍처**: 모듈별 역할 분담 (Controller, Service, Repository, DTO)
+- **핵심 로직**: 단계별 비즈니스 로직 설명 (번호 매기기)
+- **기술 스택**: 사용할 기술과 라이브러리
+
+#### 4. ⌛️ 구현 체크리스트
+
+- **필수 (MVP)**: 핵심 기능 구현 항목
+- **선택 (2차 개발)**: 개선 및 확장 기능
+
+#### 5. 📕 래퍼런스
+
+- **API 설계 문서**: Notion 링크 및 경로
+- **관련 엔티티**: 사용되는 엔티티 파일
+- **DTO 구조**: 요청/응답 DTO 클래스
+- **구현 우선순위**: 개발 순서 제시
+
+---
+
+## 📚 GitHub Issue 예시
+
+### 🚀 관심종목 삭제 기능 예시
+
+```markdown
+## ✨ 구현 할 기능
+
+사용자가 특정 폴더에서 관심종목을 삭제하는 기능을 구현합니다. 폴더 내에서 개별 관심종목을 선택하여 제거할 수 있으며, 삭제 후 해당 관심종목은 완전히 제거됩니다.
+
+## 🍈 주요 요구사항
+
+### API 엔드포인트
+
+- **DELETE** `/api/favorites/{favorite_id}/items/{item_id}` (관심종목 삭제)
+- 인증 필요 (JWT AT + JwtAuthGuard)
+
+### Path Parameters
+
+- `favorite_id`: 삭제할 관심종목이 있는 폴더의 ID (number, required)
+- `item_id`: 삭제할 관심종목의 ID (number, required)
+
+### 데이터베이스 활용
+
+- `FavoriteAsset` 엔티티에서 해당 레코드 삭제
+- `Favorite` 엔티티를 통한 폴더별 분류 유지
+- 삭제된 관심종목은 완전히 제거
+- **정렬 순서 재정렬**: 삭제 후 남은 관심종목들의 sort_order를 연속적으로 재정렬
+
+### 보안 강화
+
+- JWT 토큰을 통한 사용자 인증
+- 본인의 폴더에서만 관심종목 삭제 가능
+
+## 📢 구현 방식
+
+### 아키텍처
+
+- **Controller**: `FavoriteAssetController`에서 삭제 API 제공
+- **Service**: `FavoriteAssetService`에서 비즈니스 로직 처리
+- **Repository**: `FavoriteAssetRepository`에서 데이터 접근
+- **DTO**: 요청/응답 데이터 검증 및 변환
+
+### 핵심 로직
+
+1. **사용자 인증**: JWT 토큰으로 사용자 식별
+2. **폴더 검증**: 해당 폴더가 사용자 소유인지 확인
+3. **관심종목 검증**: 삭제할 관심종목이 해당 폴더에 존재하는지 확인
+4. **삭제 처리**: 데이터베이스에서 해당 관심종목 레코드 삭제
+5. **정렬 순서 재정렬**: 삭제 후 남은 관심종목들의 sort_order를 연속적으로 재정렬
+6. **응답 반환**: 삭제 성공 메시지 반환
+
+### 기술 스택
+
+- NestJS Framework
+- TypeORM (MikroORM)
+- JWT 인증
+- Class-validator (DTO 검증)
+
+## ⌛️ 구현 체크리스트
+
+### 필수 (MVP)
+
+- [x] DELETE `/api/favorites/{favorite_id}/items/{item_id}` 엔드포인트 구현
+- [x] Path Parameter 검증 (favorite_id, item_id)
+- [x] JWT 인증 연동
+- [x] 폴더 소유권 검증
+- [x] 관심종목 존재 여부 검증
+- [x] 데이터베이스 삭제 로직
+- [x] **정렬 순서 재정렬 로직**: 삭제 후 남은 관심종목들의 sort_order 연속 재정렬
+- [x] 응답 DTO 구조 구현
+
+### 선택 (2차 개발)
+
+- [ ] 배치 관심종목 삭제
+- [ ] 삭제 히스토리 관리
+- [ ] 삭제 전 확인 다이얼로그
+
+## 📕 래퍼런스
+
+- [NestJS 공식 문서](https://docs.nestjs.com/)
+- [TypeORM 문서](https://typeorm.io/)
+- [JWT 인증 가이드](https://docs.nestjs.com/security/authentication)
+- [Class-validator 문서](https://github.com/typestack/class-validator)
+```
+
+### 🚀 포트폴리오 생성 기능 예시
+
+````markdown
+## ✨ 구현 할 기능
+
+사용자가 새로운 포트폴리오를 생성할 수 있는 기능을 구현합니다. 포트폴리오 이름을 입력하면 자동으로 정렬 순서가 할당되고, 초기에는 빈 상태(자산 없음)로 생성됩니다.
+
+## 🍈 주요 요구사항
+
+### API 엔드포인트
+
+- **POST** `/api/portfolios` (포트폴리오 생성)
+- 인증 필요 (JWT AT + JwtAuthGuard)
+
+### 데이터베이스 활용
+
+- Portfolio 엔티티에 새 레코드 생성
+- User 엔티티와의 관계 설정 (사용자 소유)
+- sort_order 자동 할당 (기존 포트폴리오 수 + 1)
+- 초기값 설정: total_eval_amount = 0, total_profit_loss = 0, total_profit_rate = 0
+
+### 보안 강화
+
+- JWT 토큰을 통한 사용자 인증
+- 본인만 포트폴리오 생성 가능
+
+## 📢 구현 방식
+
+### 아키텍처
+
+- **Controller**: PortfolioController에서 생성 API 제공
+- **Service**: PortfolioService에서 비즈니스 로직 처리
+- **Repository**: PortfolioRepository에서 데이터 접근
+- **DTO**: 요청/응답 데이터 검증 및 변환
+
+### 핵심 로직
+
+1. **사용자 인증**: JWT 토큰으로 사용자 식별
+2. **입력값 검증**: Request Body의 유효성 검사
+3. **정렬 순서 계산**: 기존 포트폴리오 수를 기반으로 자동 할당
+4. **포트폴리오 생성**: 데이터베이스에 새 레코드 저장
+5. **응답 반환**: 생성된 포트폴리오 정보 반환
+
+### 기술 스택
+
+- NestJS Framework
+- TypeORM (MikroORM)
+- JWT 인증
+- Class-validator (DTO 검증)
+
+## ⌛️ 구현 체크리스트
+
+### 필수 (MVP)
+
+- [x] POST `/api/portfolios` 엔드포인트 구현
+- [x] Request Body 검증 (name 필드)
+- [x] JWT 인증 연동
+- [x] 사용자 정보 추출 및 검증
+- [x] 정렬 순서 자동 계산 로직
+- [x] 데이터베이스 포트폴리오 생성
+- [x] 응답 DTO 구조 구현
+- [x] 에러 핸들링
+
+### 선택 (2차 개발)
+
+- [x] 포트폴리오 이름 중복 검증
+- [ ] 포트폴리오 생성 히스토리 관리
+- [ ] 기본 카테고리 자동 생성
+
+## 📕 래퍼런스
+
+### API 설계 문서
+
+- Notion: "API, DTO, enum 설계" > "4. 포트폴리오 API" > "Add Portfolio"
+
+### 구현 우선순위
+
+1. DTO 클래스 생성
+2. Controller 엔드포인트 구현
+3. Service 비즈니스 로직 구현
+4. Repository 데이터 접근 구현
+5. 테스트 코드 작성
+6. API 문서화 (Swagger)
+
+```
+
+---
+
+
+## 📚 관련 문서
+
+- **Git 커밋 컨벤션**: `@GithubCommit.mdc`
+- **GitHub PR 메시지 형식**: `@GithubPR.mdc`
+
+---
+
+## 📚 완료된 기능들 (참고용)
+
+#### 1. 관심종목 조회 (GitHub Issue #32)
+
+- **API**: `GET /api/favorites/{favorite_id}?sortBy={name}&order={desc}`
+- **Notion 페이지**: [Get Favorite Assets](https://www.notion.so/Get-Favorite-Assets-220cf376124680c59eabf0e203643413)
+- **핵심 기능**: 폴더별 관심종목 조회, 정렬 옵션 지원
+
+#### 2. 관심종목 추가 (GitHub Issue #33)
+
+- **API**: `POST /api/favorites/{favorite_id}/items`
+- **Notion 페이지**: [Add Favorite Asset](https://www.notion.so/Add-Favorite-Asset-222cf3761246808d8486cc4511181264)
+- **핵심 기능**: 새로운 관심종목 등록, 중복 검증, 정렬 순서 자동 설정
+
+#### 3. 관심종목 삭제 (GitHub Issue #34)
+
+- **API**: `DELETE /api/favorites/{favorite_id}/items/{item_id}`
+- **Notion 페이지**: [Delete Favorite Asset](https://www.notion.so/Delete-Favorite-Asset-222cf376124680578343eecccf5d86df)
+- **핵심 기능**: 관심종목 제거, 정렬 순서 재정렬 로직
+
+#### 4. 관심종목 편집 (GitHub Issue #35)
+
+- **API**: `PUT /api/favorites/{favorite_id}/items`
+- **Notion 페이지**: [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f)
+- **핵심 기능**: 정렬 순서 변경, 배치 업데이트, 트랜잭션 처리
+
+---
+
+## 📋 결론
+
+이 규칙을 따르면 finsnap 프로젝트에서 일관성 있고 체계적인 GitHub Issue를 작성할 수 있습니다.
+
+**핵심 포인트:**
+
+- GitHub Issue: 기능 개요 및 요구사항 정의
+- 체크리스트를 통한 진행 상황 관리
+- 표준화된 플로우 패턴으로 효율적인 작업 진행
+
+**사용 시 주의사항:**
+
+- 프로젝트 특성에 맞게 템플릿 커스터마이징
+- 팀원들과 템플릿 사용법 공유
+- 정기적인 템플릿 개선 및 업데이트
+- 항상 기존 이슈 업데이트 우선 (새로 생성 금지)
+
+이제 이 규칙을 바탕으로 finsnap 프로젝트의 모든 기능 구현을 체계적으로 진행할 수 있습니다! 🚀
+
+---
+
+description:
+globs:
+alwaysApply: true
+
+---
+```
+````

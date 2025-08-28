@@ -1,0 +1,217 @@
+---
+alwaysApply: true
+---
+## 📚 Notion 기능구현 페이지 예시
+
+### 📝 관심종목 정렬 순서 편집 기능 예시
+
+```markdown
+## 📌 기능 설명
+
+사용자가 특정 폴더 내 관심종목들의 정렬 순서를 편집하는 기능.
+드래그 앤 드롭이나 수동 입력을 통해 관심종목들의 순서를 변경할 수 있으며,
+변경된 순서는 데이터베이스에 즉시 반영된다.
+
+## 🧷 기능 흐름
+
+### **관심종목 정렬 순서 편집**
+
+1. **사용자**:
+   1. 관심종목 목록에서 편집 모드 진입
+   2. 드래그 앤 드롭으로 관심종목 순서 변경 또는 수동으로 순서 입력
+   3. "저장" 버튼 클릭
+
+2. **프론트엔드 (FE)**:
+   1. 변경된 정렬 순서를 배열로 구성
+   2. **PUT** `/api/favorites/{favorite_id}/items` 호출 (JWT 토큰, favoriteAssets 배열 포함)
+   3. 로딩 상태 표시
+
+3. **백엔드 (BE)**:
+   1. JWT 검증 (JwtAuthGuard)
+   2. 사용자 ID 추출 및 검증
+   3. Path Parameter 검증 (favorite_id)
+   4. Request Body 검증 (favoriteAssets 배열, 각 항목의 id, sort_order)
+   5. 폴더 존재 여부 확인
+   6. 폴더 소유권 검증 (사용자 ID 일치)
+   7. 관심종목 존재 여부 검증 (요청된 관심종목들이 해당 폴더에 존재하는지)
+   8. 정렬 순서 중복 검증 (동일한 sort_order 값이 중복되지 않는지)
+   9. **배치 업데이트**: 데이터베이스에서 각 관심종목의 sort_order 일괄 업데이트
+   10. 200 OK 응답 및 업데이트된 관심종목 목록 반환
+
+4. **프론트엔드 (FE)**:
+   1. 성공 시: 성공 메시지 표시 및 관심종목 목록 실시간 업데이트
+   2. 실패 시: 에러 메시지 표시
+
+### **배치 업데이트 처리**
+
+1. **사용자**: 여러 관심종목의 순서를 동시에 변경
+2. **백엔드**: 트랜잭션 내에서 모든 관심종목의 sort_order를 일괄 업데이트
+3. **프론트엔드**: 업데이트된 전체 목록을 화면에 반영
+
+## 🔗 관련 API
+
+| Number | Method | Path                                 | Summary                        | Notion Page                                                                                            |
+| ------ | ------ | ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| 1      | PUT    | `/api/favorites/{favorite_id}/items` | 관심종목 편집 (정렬 순서 변경) | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+
+## 🛠️ 연관 DTO
+
+| API_Number | DTO_Name                          | Summary                                                  | Notion Page                                                                                            |
+| ---------- | --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1          | `FavoriteAssetPathParamsDto`      | Path Parameter (favorite_id)                             | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdateFavoriteAssetsBodyDto`     | Request Body (favoriteAssets 배열)                       | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `FavoriteAssetUpdateItem`         | 개별 관심종목 업데이트 항목 (id, sort_order)             | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdateFavoriteAssetsResponseDto` | 응답 데이터 구조                                         | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+| 1          | `UpdatedFavoriteAsset`            | 업데이트된 관심종목 정보 (favorite_asset_id, sort_order) | [Put Favorite Asset](https://www.notion.so/Put-Favorite-Asset-220cf376124680d893adf62f6064241f?pvs=21) |
+
+## 🏁 구현 체크리스트
+
+### **프론트엔드**
+
+- [ ] 관심종목 편집 모드 UI 구현
+- [ ] 드래그 앤 드롭 기능 구현
+- [ ] 수동 순서 입력 UI 구현
+- [ ] "저장" 버튼 및 로딩 상태
+- [ ] 성공 시 관심종목 목록 실시간 업데이트
+- [ ] 에러 처리 및 사용자 피드백
+
+### **백엔드**
+
+- [x] `FavoriteAssetController`에 PUT 엔드포인트 추가
+- [x] Path Parameter 검증 로직 구현 (favorite_id)
+- [x] Request Body 검증 로직 구현 (favoriteAssets 배열, 각 항목의 id, sort_order)
+- [x] JWT 인증 연동
+- [x] 폴더 소유권 검증 로직
+- [x] 관심종목 존재 여부 검증 로직
+- [x] 정렬 순서 중복 검증 로직
+- [x] **배치 업데이트 로직**: 여러 관심종목의 sort_order 일괄 업데이트
+- [x] 응답 DTO 구조 구현
+
+### **공통**
+
+- [x] API 문서화 (Swagger)
+- [ ] 단위 테스트 작성
+- [x] 통합 테스트 작성
+- [ ] 에러 응답 표준화 적용
+
+## 🔒 보안 고려사항
+
+- **JWT 인증**: 모든 요청에 JWT 토큰 검증 필수
+- **권한 검증**: 사용자는 본인의 폴더에서만 관심종목 편집 가능
+- **입력 검증**: Path Parameter와 Request Body에 대한 유효성 검사
+- **데이터 무결성**: 트랜잭션을 통한 배치 업데이트로 데이터 일관성 유지
+- **에러 처리**: 민감한 정보가 노출되지 않도록 에러 메시지 관리
+
+## 🚨 예외 상황
+
+### **1순위 (핵심)**
+
+- **JWT 토큰 만료**: 401 Unauthorized 응답
+- **JWT 토큰 부재**: 401 Unauthorized 응답
+- **폴더 소유권 없음**: 403 Forbidden + "편집 권한이 없습니다"
+- **존재하지 않는 폴더**: 404 Not Found + "존재하지 않는 폴더입니다"
+
+### **2순위 (입력값 검증)**
+
+- **잘못된 폴더 ID 형식**: 400 Bad Request + "올바른 폴더 ID를 입력해주세요"
+- **잘못된 Request Body 형식**: 400 Bad Request + "올바른 요청 형식을 입력해주세요"
+- **favoriteAssets 배열 누락**: 400 Bad Request + "관심종목 배열을 입력해주세요"
+- **필수 필드 누락**: 400 Bad Request + "필수 정보를 모두 입력해주세요"
+
+### **3순위 (비즈니스 로직)**
+
+- **존재하지 않는 관심종목**: 404 Not Found + "존재하지 않는 관심종목입니다"
+- **정렬 순서 중복**: 400 Bad Request + "중복된 정렬 순서가 있습니다"
+- **잘못된 정렬 순서**: 400 Bad Request + "올바른 정렬 순서를 입력해주세요"
+
+### **기타**
+
+- **데이터베이스 연결 실패**: 500 Internal Server Error 응답
+- **트랜잭션 실패**: 500 Internal Server Error 응답
+- **사용자 정보 없음**: 404 Not Found 응답
+- **시스템 오류**: 500 Internal Server Error + "일시적인 오류가 발생했습니다"
+```
+
+---
+
+## ✅ Notion 기능구현 페이지 품질 체크리스트
+
+- [ ] 기능 설명이 명확하고 구체적
+- [ ] 기능 흐름이 User/FE/BE로 구분되어 상세히 기술
+- [ ] API 테이블이 완성도 있게 작성
+- [ ] DTO 테이블이 API와 연관성 있게 구성
+- [ ] 체크리스트가 역할별로 세분화
+- [ ] 보안 및 예외 상황이 우선순위별로 고려됨
+
+---
+
+## 🔄 템플릿 활용 규칙
+
+### 📋 작성 순서
+
+1. **GitHub Issue 생성**
+   - 기능 개요 및 요구사항 정의
+   - 구현 방식 및 체크리스트 작성
+   - 라벨 및 담당자 지정
+
+2. **Notion 기능구현 페이지 생성**
+   - GitHub Issue 내용을 기반으로 상세화
+   - 기능 흐름 및 API 스펙 정의
+   - 구현 체크리스트 세분화
+
+### 📝 내용 일관성 유지
+
+- **기능명**: GitHub Issue와 Notion 페이지에서 동일하게 사용
+- **API 엔드포인트**: 두 템플릿에서 일치하는 정보 제공
+- **구현 체크리스트**: GitHub Issue의 체크리스트를 Notion에서 세분화
+
+---
+
+## 🚀 활용 가이드
+
+### 1. 새 기능 개발 시
+
+1. GitHub Issue 템플릿으로 기능 개요 작성
+2. Notion 기능구현 페이지로 상세 설계
+3. 두 템플릿 간 내용 일관성 확인
+4. 구현 진행에 따라 체크리스트 업데이트
+
+### 2. 기존 기능 수정 시
+
+1. GitHub Issue로 수정 사항 정의
+2. Notion 페이지에 수정 내용 반영
+3. 영향받는 API 및 DTO 업데이트
+4. 테스트 체크리스트 추가
+
+### 3. 문서 유지보수
+
+1. 정기적으로 템플릿 내용 검토
+2. 프로젝트 특성에 맞게 템플릿 개선
+3. 팀원들의 피드백 반영
+4. 템플릿 사용법 가이드 업데이트
+
+---
+
+## 📋 결론
+
+이 규칙을 따르면 finsnap 프로젝트에서 일관성 있고 체계적인 Notion 기능구현 페이지를 작성할 수 있습니다.
+
+**핵심 포인트:**
+
+- Notion 페이지: 상세 설계 및 구현 가이드
+- 기능 흐름의 User/FE/BE 구분으로 명확한 역할 분담
+- API 및 DTO 테이블을 통한 체계적인 정보 정리
+- 체크리스트를 통한 진행 상황 관리
+
+**사용 시 주의사항:**
+
+- 프로젝트 특성에 맞게 템플릿 커스터마이징
+- 팀원들과 템플릿 사용법 공유
+- 정기적인 템플릿 개선 및 업데이트
+- GitHub Issue와의 내용 일관성 유지
+
+description:
+globs:
+alwaysApply: true
+
+---
