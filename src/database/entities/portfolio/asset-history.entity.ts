@@ -16,7 +16,9 @@ export class AssetHistory {
   @Column({ type: 'int' })
   user_asset_id: number;
 
-  @ManyToOne(() => UserAsset)
+  @ManyToOne(() => UserAsset, (userAsset) => userAsset.asset_histories, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'user_asset_id' })
   user_asset: UserAsset;
 

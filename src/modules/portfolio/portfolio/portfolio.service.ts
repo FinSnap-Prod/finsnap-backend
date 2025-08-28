@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PortfolioRepository } from './portfolio.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { DeletePortfolioParamDto } from '../dto';
 
 @Injectable()
 export class PortfolioService {
@@ -73,6 +74,31 @@ export class PortfolioService {
         );
       }
 
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(error.message),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async deletePortfolio(portfolioId: number, userId: string) {
+    try {
+      await this.portfolioRepository.executeDeletePortfolioTransaction(
+        portfolioId,
+        userId,
+      );
+
+      return {
+        success: true,
+        message: 'Portfolio deleted successfully.',
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
       throw new HttpException(
         ErrorResponseUtil.internalServerError(error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,

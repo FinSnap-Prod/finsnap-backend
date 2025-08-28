@@ -6,11 +6,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { Category } from './category.entity';
 import { Asset } from '../asset/asset.entity';
 import { Institution } from '../code/institution.entity';
 import { CurrencyCode } from '../code/currency-code.entity';
+import { AssetHistory } from './asset-history.entity';
 
 @Entity('user_asset')
 export class UserAsset {
@@ -20,7 +22,9 @@ export class UserAsset {
   @Column({ type: 'int' })
   category_id: number;
 
-  @ManyToOne(() => Category)
+  @ManyToOne(() => Category, (category) => category.assets, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
@@ -30,6 +34,12 @@ export class UserAsset {
   @ManyToOne(() => Asset)
   @JoinColumn({ name: 'asset_id' })
   asset: Asset;
+
+  @OneToMany(() => AssetHistory, (history) => history.user_asset, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  asset_histories: AssetHistory[];
 
   @Column({ type: 'int' })
   institution_id: number;

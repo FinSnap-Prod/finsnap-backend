@@ -116,14 +116,15 @@ export class PortfolioController {
   @ApiPortfolioParam()
   @ApiDeletePortfolioResponse()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async deletePortfolio(
     @Param() deletePortfolioParamDto: DeletePortfolioParamDto,
+    @User() user: any,
   ): Promise<DeletePortfolioResponseDto> {
-    const mockData: DeletePortfolioResponseDto = {
-      success: true,
-      message: 'Portfolio deleted successfully.',
-    };
-    return mockData;
+    return await this.portfolioService.deletePortfolio(
+      Number(deletePortfolioParamDto.portfolio_id),
+      user.id,
+    );
   }
 
   @Put(':portfolio_id')

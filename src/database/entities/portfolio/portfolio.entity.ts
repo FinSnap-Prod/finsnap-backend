@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../user/user.entity';
+import { Category } from './category.entity';
 
 @Entity('portfolio')
 export class Portfolio {
@@ -20,6 +22,12 @@ export class Portfolio {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @OneToMany(() => Category, (category) => category.portfolio, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  categories: Category[];
 
   @Column({ type: 'varchar', length: 100 })
   name: string;
