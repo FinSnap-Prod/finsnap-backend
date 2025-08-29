@@ -133,20 +133,17 @@ export class CategoryController {
   @ApiCategoryParams()
   @ApiUpdateCategory()
   @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
   async updateCategory(
     @Param() updateCategoryParamDto: UpdateCategoryParamDto,
     @Body() updateCategoryRequestDto: UpdateCategoryRequestDto,
+    @User() user: any,
   ): Promise<UpdateCategoryResponseDto> {
-    const mockData: UpdateCategoryResponseDto = {
-      success: true,
-      message: 'Category updated successfully.',
-      data: {
-        category_id: 23,
-        portfolio_id: 1,
-        name: '수정된 카테고리명',
-        updated_at: '2025-07-03T12:15:45.000Z',
-      },
-    };
-    return mockData;
+    return await this.categoryService.updateCategory(
+      user.id,
+      Number(updateCategoryParamDto.portfolio_id),
+      Number(updateCategoryParamDto.category_id),
+      updateCategoryRequestDto.name,
+    );
   }
 }

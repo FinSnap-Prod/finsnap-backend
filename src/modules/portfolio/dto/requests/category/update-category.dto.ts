@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsString, Length, Min } from 'class-validator';
+import { IsString, Length } from 'class-validator';
 
 export class UpdateCategoryRequestDto {
   @ApiProperty({ description: '카테고리 이름', example: '카테고리 1' })
@@ -10,12 +10,10 @@ export class UpdateCategoryRequestDto {
 
 export class UpdateCategoryParamDto {
   @ApiProperty({ description: '포트폴리오 ID', example: 1 })
-  @IsInt()
-  @Min(1)
-  portfolio_id: number;
+  @IsString()
+  portfolio_id: string;
 
   @ApiProperty({ description: '카테고리 ID', example: 1 })
-  @IsInt()
-  @Min(1)
-  category_id: number;
+  @IsString()
+  category_id: string;
 }

@@ -99,4 +99,58 @@ export class CategoryRepository {
         .execute();
     });
   }
+
+  async executeUpdateCategoryTransaction(
+    userId: string,
+    portfolioId: number,
+    categoryId: number,
+    name: string,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1-1. 포트폴리오 존재 여부 및 소유권 검증
+      const existingPortfolio = await manager.findOne(Portfolio, {
+        where: { id: portfolioId, user_id: userId },
+      });
+
+      if (!existingPortfolio) {
+        throw new Error('Portfolio not found');
+      }
+
+      // 1-2. 카테고리 존재 여부 및 소유권 검증
+      const existingCategory = await manager.findOne(Category, {
+        where: { id: categoryId, portfolio_id: portfolioId },
+      });
+
+      if (!existingCategory) {
+        throw new Error('Category not found');
+      }
+
+      // 2. 카테고리 이름 중복 검증
+      const existingCategoryWithSameName = await manager.findOne(Category, {
+        where: { name, portfolio_id: portfolioId },
+      });
+
+      if (existingCategoryWithSameName) {
+        throw new Error('Category name already exists');
+      }
+
+      // 3. 카테고리 이름 업데이트
+      await manager
+        .createQueryBuilder()
+        .update(Category)
+        .set({ name })
+        .where('id = :id AND portfolio_id = :portfolioId', {
+          id: categoryId,
+          portfolioId,
+        })
+        .execute();
+
+      // 4. 업데이트된 카테고리 조회
+      const updatedCategory = await manager.findOne(Category, {
+        where: { id: categoryId, portfolio_id: portfolioId },
+      });
+
+      return updatedCategory;
+    });
+  }
 }

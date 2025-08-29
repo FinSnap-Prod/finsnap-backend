@@ -190,6 +190,7 @@ export class PortfolioRepository {
       const categories = await manager.find(Category, {
         where: { portfolio_id: portfolioId },
         select: ['id', 'name', 'sort_order'],
+        order: { sort_order: 'ASC' },
       });
 
       // 3-1. 카테고리가 없는 경우(포트폴리오 생성하고 바로 조회할 경우) 반환

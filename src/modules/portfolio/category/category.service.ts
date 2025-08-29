@@ -99,4 +99,66 @@ export class CategoryService {
       );
     }
   }
+
+  async updateCategory(
+    userId: string,
+    portfolioId: number,
+    categoryId: number,
+    name: string,
+  ) {
+    try {
+      const updatedCategory =
+        await this.categoryRepository.executeUpdateCategoryTransaction(
+          userId,
+          portfolioId,
+          categoryId,
+          name,
+        );
+
+      if (!updatedCategory) {
+        throw new HttpException(
+          ErrorResponseUtil.internalServerError('Failed to update category'),
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return {
+        success: true,
+        message: 'Category updated successfully.',
+        data: {
+          category_id: updatedCategory.id,
+          portfolio_id: updatedCategory.portfolio_id,
+          name: updatedCategory.name,
+          created_at: updatedCategory.created_at.toISOString().split('T')[0],
+          updated_at: updatedCategory.updated_at.toISOString().split('T')[0],
+        },
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Category not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category name already exists') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Category name already exists'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    throw new HttpException(
+      ErrorResponseUtil.internalServerError('Failed to update category'),
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
 }
