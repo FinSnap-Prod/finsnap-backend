@@ -53,4 +53,50 @@ export class CategoryRepository {
       return createdCategory;
     });
   }
+
+  async executeDeleteCategoryTransaction(
+    userId: string,
+    portfolioId: number,
+    categoryId: number,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1-1. 포트폴리오 존재 여부 및 소유권 검증
+      const existingPortfolio = await manager.findOne(Portfolio, {
+        where: { id: portfolioId, user_id: userId },
+      });
+
+      if (!existingPortfolio) {
+        throw new Error('Portfolio not found');
+      }
+
+      // 1-2. 카테고리 존재 여부 및 소유권 검증
+      const existingCategory = await manager.findOne(Category, {
+        where: { id: categoryId, portfolio_id: portfolioId },
+      });
+
+      if (!existingCategory) {
+        throw new Error('Category not found');
+      }
+
+      // 2. 삭제 포트폴리오 정렬 번호 조회
+      const deletedSortOrder = existingCategory.sort_order;
+
+      // 3. 포트폴리오 삭제
+      await manager.delete(Category, { id: categoryId });
+
+      // 4. 정렬 순서 업데이트
+      await manager
+        .createQueryBuilder()
+        .update(Category)
+        .set({ sort_order: () => 'sort_order - 1' })
+        .where(
+          'portfolio_id = :portfolioId AND sort_order > :deletedSortOrder',
+          {
+            portfolioId,
+            deletedSortOrder,
+          },
+        )
+        .execute();
+    });
+  }
 }

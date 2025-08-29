@@ -54,4 +54,49 @@ export class CategoryService {
       );
     }
   }
+
+  async deleteCategory(
+    userId: string,
+    portfolioId: number,
+    categoryId: number,
+  ) {
+    try {
+      await this.categoryRepository.executeDeleteCategoryTransaction(
+        userId,
+        portfolioId,
+        categoryId,
+      );
+
+      return {
+        success: true,
+        message: 'Category deleted successfully.',
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Category not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.status === 400) {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(error.message),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('Failed to delete category'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
