@@ -116,14 +116,16 @@ export class CategoryController {
   @ApiCategoryParams()
   @ApiDeleteCategoryResponse()
   @ApiCommonErrorResponses()
+  @UseGuards(JwtAuthGuard)
   async deleteCategory(
     @Param() deleteCategoryParamDto: DeleteCategoryParamDto,
+    @User() user: any,
   ): Promise<DeleteCategoryResponseDto> {
-    const mockData: DeleteCategoryResponseDto = {
-      success: true,
-      message: 'Category deleted successfully.',
-    };
-    return mockData;
+    return await this.categoryService.deleteCategory(
+      user.id,
+      Number(deleteCategoryParamDto.portfolio_id),
+      Number(deleteCategoryParamDto.category_id),
+    );
   }
 
   @Put(':category_id')
