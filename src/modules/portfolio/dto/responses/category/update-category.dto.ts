@@ -10,6 +10,9 @@ export class UpdateCategoryItem {
   @ApiProperty({ description: '카테고리 이름', example: '카테고리 1' })
   name: string;
 
+  @ApiProperty({ description: '생성일', example: '2021-01-01' })
+  created_at: string;
+
   @ApiProperty({ description: '수정일', example: '2021-01-01' })
   updated_at: string;
 }
