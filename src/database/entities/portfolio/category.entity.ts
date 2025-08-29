@@ -5,6 +5,8 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Portfolio } from './portfolio.entity';
 import { UserAsset } from './user-asset.entity';
@@ -34,4 +36,10 @@ export class Category {
 
   @Column({ type: 'int' })
   sort_order: number;
+
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 }
