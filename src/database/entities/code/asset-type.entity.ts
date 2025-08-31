@@ -12,7 +12,10 @@ export class AssetType {
   id: number;
 
   @Column({ type: 'varchar', length: 20 })
-  name: string;
+  type_name: string; // STOCK, ETF, CRYPTO, DEPOSIT, SAVING
+
+  @Column({ type: 'varchar', length: 20 })
+  display_name: string; // 주식, ETF, 암호화폐, 예금, 적금
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

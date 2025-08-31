@@ -18,9 +18,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "domestic-master": "ts-node src/database/seeder/domestic/run-domestic-master.ts",
-    "overseas-master": "ts-node src/database/seeder/overseas/run-overseas-master.ts",
-    "all-seeders": "ts-node src/database/seeder/run-all-seeders.ts"
+    "domestic-master": "ts-node -r tsconfig-paths/register src/database/seeder/domestic/run-domestic-master.ts",
+    "overseas-master": "ts-node -r tsconfig-paths/register src/database/seeder/overseas/run-overseas-master.ts",
+    "seed:code-master": "ts-node -r tsconfig-paths/register src/database/seeder/run-code-master.ts",
+    "seed:asset-index": "ts-node -r tsconfig-paths/register src/database/seeder/run-asset-index.ts",
+    "all-seeders": "ts-node -r tsconfig-paths/register src/database/seeder/run-all-seeders.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

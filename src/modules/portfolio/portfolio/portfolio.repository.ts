@@ -233,7 +233,7 @@ export class PortfolioRepository {
           let assetName = '';
 
           // 5-1. 자산 타입에 따른 이름 조회
-          switch (assetInfo.asset_type.name) {
+          switch (assetInfo.asset_type.type_name) {
             case 'stock':
               // StockInfo 테이블에서 이름 조회
               const stockInfo = await manager.findOne(StockInfo, {
