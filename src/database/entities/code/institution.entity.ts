@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  UpdateDateColumn,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity('institution')
 export class Institution {
@@ -6,8 +12,14 @@ export class Institution {
   id: number;
 
   @Column({ type: 'varchar', length: 20 })
-  type: string;
+  type_name: string; // bank, broker, exchange
 
   @Column({ type: 'varchar', length: 100 })
-  name: string;
+  display_name: string; // 은행, 증권사, 거래소
+
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 }
