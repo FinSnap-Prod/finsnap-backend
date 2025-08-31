@@ -20,6 +20,8 @@ import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history
 import { OverseasCryptoMasterSeeder } from './overseas/crypto/crypto-master.seeder';
 import { OverseasCryptoMarketSeeder } from './overseas/crypto/crypto-market.seeder';
 import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price-history.seeder';
+import { CodeMasterSeeder } from './code-master.seeder';
+import { AssetIndexSeeder } from './asset-index.seeder';
 
 // 지연 함수
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,6 +39,8 @@ async function bootstrap() {
 
   // Seeder 인스턴스들
   const seeders = {
+    codeMaster: app.get(CodeMasterSeeder),
+    assetIndex: app.get(AssetIndexSeeder),
     kospiMaster: app.get(KospiMasterSeeder),
     kosdaqMaster: app.get(KosdaqMasterSeeder),
     overseasMaster: app.get(OverseasMasterSeeder),
@@ -60,6 +64,11 @@ async function bootstrap() {
   };
 
   console.log('--- All Seeders Start (Sequential Processing) ---');
+
+  // 0. Code Master Data (가장 먼저 실행)
+  console.log('0️⃣ Running code master seeder...');
+  await runSeeder(seeders.codeMaster, 'Code master seeder');
+  console.log('✅ Code master seeder finished.');
 
   // 1. Master Data
   console.log('1️⃣ Running master data seeders...');
@@ -143,6 +152,10 @@ async function bootstrap() {
     seeders.overseasCryptoPriceHistory,
     'Overseas crypto price history seeder',
   );
+
+  console.log('0️⃣.5️⃣ Running asset index seeder...');
+  await runSeeder(seeders.assetIndex, 'Asset index seeder');
+  console.log('✅ Asset index seeder finished.');
 
   await app.close();
   console.log('--- All Seeders End ---');

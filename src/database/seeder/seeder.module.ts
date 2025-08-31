@@ -30,6 +30,14 @@ import { CryptoPriceHistorySeeder } from './domestic/crypto/crypto-price-history
 import { OverseasCryptoMasterSeeder } from './overseas/crypto/crypto-master.seeder';
 import { OverseasCryptoMarketSeeder } from './overseas/crypto/crypto-market.seeder';
 import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price-history.seeder';
+import { AssetType } from '../entities/code/asset-type.entity';
+import { AssetHistoryType } from '../entities/code/asset-history-type.entity';
+import { CurrencyCode } from '../entities/code/currency-code.entity';
+import { Institution } from '../entities/code/institution.entity';
+import { MarketRegion } from '../entities/code/market-region.entity';
+import { Asset } from '../entities/asset/asset.entity';
+import { CodeMasterSeeder } from './code-master.seeder';
+import { AssetIndexSeeder } from './asset-index.seeder';
 
 @Module({
   imports: [
@@ -44,9 +52,18 @@ import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price
       CryptoMarket,
       CryptoMarketData,
       CryptoPriceHistory,
+      AssetType,
+      AssetHistoryType,
+      CurrencyCode,
+      Institution,
+      InterestType,
+      MarketRegion,
+      Asset,
     ]),
   ],
   providers: [
+    CodeMasterSeeder,
+    AssetIndexSeeder,
     KospiMasterSeeder,
     KosdaqMasterSeeder,
     StockMarketSeeder,
@@ -69,6 +86,8 @@ import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price
     OverseasCryptoPriceHistorySeeder,
   ],
   exports: [
+    CodeMasterSeeder,
+    AssetIndexSeeder,
     KospiMasterSeeder,
     KosdaqMasterSeeder,
     StockMarketSeeder,
