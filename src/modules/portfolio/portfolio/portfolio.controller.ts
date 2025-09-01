@@ -142,32 +142,7 @@ export class PortfolioController {
     );
   }
 
-  @Post(':portfolio_id/categories/:category_id/assets')
-  @ApiOperation({ summary: '자산 추가 및 거래내역 추가' })
-  @ApiCategoryParams()
-  @ApiCreateAssetHistory()
-  @ApiCommonErrorResponses()
-  async createAssetHistory(
-    @Param() createAssetHistoryParamDto: CreateAssetHistoryParamDto,
-    @Body() createAssetHistoryRequestDto: CreateAssetHistoryRequestDto,
-  ): Promise<CreateAssetHistoryResponseDto> {
-    const mockData: CreateAssetHistoryResponseDto = {
-      success: true,
-      message: 'Asset added successfully.',
-      data: {
-        asset_id: 10,
-        category_id: 1,
-        institution_id: 2,
-        currency_code: 'KRW',
-        type: 'sell',
-        price: 23000,
-        quantity: 10,
-        memo: '7월 매수',
-        created_at: 'YYYY-MM-DD HH:MM:SS',
-      },
-    };
-    return mockData;
-  }
+
 
   @Delete(':portfolio_id/categories/:category_id/assets/:asset_id')
   @ApiOperation({ summary: '자산 삭제' })
