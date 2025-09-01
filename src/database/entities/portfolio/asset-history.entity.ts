@@ -4,6 +4,8 @@ import {
   Column,
   JoinColumn,
   ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { UserAsset } from './user-asset.entity';
 import { AssetHistoryType } from '../code/asset-history-type.entity';
@@ -43,6 +45,12 @@ export class AssetHistory {
 
   @Column({ type: 'text', nullable: true })
   memo: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 
   @Column({ type: 'boolean', default: false })
   deleted: boolean;

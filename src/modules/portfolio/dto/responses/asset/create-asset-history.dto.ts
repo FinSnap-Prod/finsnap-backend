@@ -10,11 +10,11 @@ export class CreateAssetItem {
   @ApiProperty({ description: '기관 ID', example: 1 })
   institution_id: number;
 
-  @ApiProperty({ description: '통화 코드', example: 'KRW' })
-  currency_code: string;
+  @ApiProperty({ description: '통화 코드 ID', example: 1 })
+  currency_code_id: number;
 
-  @ApiProperty({ description: '거래 유형', example: 'buy' })
-  type: string;
+  @ApiProperty({ description: '자산 거래 유형 ID', example: 1 })
+  asset_history_type_id: number;
 
   @ApiProperty({ description: '거래 가격', example: 10000 })
   price: number;
@@ -25,8 +25,8 @@ export class CreateAssetItem {
   @ApiProperty({ description: '메모', example: '거래 메모' })
   memo?: string;
 
-  @ApiProperty({ description: '생성일', example: '2021-01-01' })
-  created_at: string;
+  @ApiProperty({ description: '생성일', example: new Date() })
+  created_at: Date;
 }
 
 export class CreateAssetHistoryResponseDto {

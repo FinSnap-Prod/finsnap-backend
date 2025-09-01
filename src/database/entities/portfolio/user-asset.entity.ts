@@ -52,7 +52,7 @@ export class UserAsset {
   currency_code_id: number;
 
   @ManyToOne(() => CurrencyCode)
-  @JoinColumn({ name: 'curreny_code_id' })
+  @JoinColumn({ name: 'currency_code_id' })
   currency_code: CurrencyCode;
 
   @Column({ type: 'numeric', precision: 20, scale: 6 })
