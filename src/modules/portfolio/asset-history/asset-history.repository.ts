@@ -1,12 +1,202 @@
 import { Injectable } from '@nestjs/common';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
 import { DataSource } from 'typeorm';
-import { CreateAssetHistoryRequestDto } from '../dto';
+import { CreateAssetHistoryRequestDto, GetAssetHistoryQueryDto } from '../dto';
 import { AssetHistory } from 'src/database/entities/portfolio/asset-history.entity';
+import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
+import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
+import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
 
 @Injectable()
 export class AssetHistoryRepository {
   constructor(private dataSource: DataSource) {}
+
+  async getAssetHistories(
+    portfolioId: number,
+    categoryId: number,
+    assetId: number,
+    userId: string,
+    queryDto: GetAssetHistoryQueryDto,
+  ) {
+    const {
+      order = 'desc',
+      sortBy = 'recorded_at',
+      page = '1',
+      limit = '20',
+      type,
+    } = queryDto;
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    return this.dataSource.transaction(async (manager) => {
+      // 1. UserAsset 조회 (관계 데이터 포함)
+      const userAsset = await manager.findOne(UserAsset, {
+        where: {
+          asset_id: assetId,
+          category_id: categoryId,
+        },
+        relations: ['category', 'asset', 'institution', 'currency_code'],
+      });
+
+      if (!userAsset) {
+        throw new Error('UserAsset not found');
+      }
+
+      // 2. 총 거래내역 수 조회
+      const totalItems = await manager.count(AssetHistory, {
+        where: {
+          user_asset_id: userAsset.id,
+          ...(type ? { asset_history_type_id: this.getTypeId(type) } : {}),
+        },
+      });
+
+      // 3. 거래내역 조회 (페이지네이션 적용)
+      const assetHistories = await manager.find(AssetHistory, {
+        where: {
+          user_asset_id: userAsset.id,
+          ...(type ? { asset_history_type_id: this.getTypeId(type) } : {}),
+        },
+        relations: ['asset_history_type'],
+        order: {
+          [sortBy]: order.toUpperCase() as 'ASC' | 'DESC',
+        },
+        skip, // 거래내역 조회 시작 인덱스
+        take: limitNumber, // 페이지당 거래내역 수
+      });
+
+      // 4. 페이지네이션 정보 계산
+      const totalPages = Math.ceil(totalItems / limitNumber);
+
+      // 5. AssetInfo에서 실제 이름 조회 필요
+      let assetName = '';
+      switch (userAsset.asset.asset_type_id) {
+        case 1:
+          const stockInfo = await manager.findOne(StockInfo, {
+            where: {
+              id: userAsset.asset.asset_info_id,
+            },
+          });
+          assetName = stockInfo?.kor_name || stockInfo?.eng_name || '';
+          break;
+        case 2:
+          const etfInfo = await manager.findOne(EtfInfo, {
+            where: {
+              id: userAsset.asset.asset_info_id,
+            },
+          });
+          assetName = etfInfo?.kor_name || etfInfo?.eng_name || '';
+          break;
+        case 3:
+          const cryptoInfo = await manager.findOne(CryptoInfo, {
+            where: {
+              id: userAsset.asset.asset_info_id,
+            },
+          });
+          assetName = cryptoInfo?.kor_name || cryptoInfo?.eng_name || '';
+          break;
+      }
+
+      // 6. 요약 정보 계산
+      const summary = await this.getAssetHistorySummary(userAsset.id, manager);
+
+      // 7. 응답 데이터 구성
+      const histories = assetHistories.map((history) => ({
+        asset_history_id: history.id,
+        type: history.asset_history_type?.display_name || 'unknown',
+        quantity: Number(history.quantity),
+        price: Number(history.price),
+        total: Number(history.total_amount),
+        recorded_at: history.recorded_at.toISOString().split('T')[0], // YYYY-MM-DD 형식
+        memo: history.memo,
+      }));
+
+      return {
+        asset_info: {
+          asset_id: assetId,
+          asset_name: assetName || '',
+          asset_type: this.getAssetTypeName(userAsset.asset.asset_type_id),
+        },
+        portfolio_info: {
+          portfolio_id: portfolioId,
+          category_id: categoryId,
+          category_name: userAsset.category?.name || '',
+          institution_id: userAsset.institution_id,
+          institution_name: userAsset.institution?.display_name || '',
+          currency_code: userAsset.currency_code?.currency_code || 'KRW',
+        },
+        summary,
+        histories,
+        pagination: {
+          current_page: pageNumber,
+          total_pages: totalPages,
+          total_items: totalItems,
+          items_per_page: limitNumber,
+        },
+      };
+    });
+  }
+
+  private getTypeId(type: string): number {
+    const typeMap = {
+      buy: 1,
+      sell: 2,
+      deposit: 3,
+      withdraw: 4,
+      exchange: 5,
+    };
+    return typeMap[type] || null;
+  }
+
+  private getAssetTypeName(assetTypeId: number): string {
+    const typeMap = {
+      1: 'stock',
+      2: 'etf',
+      3: 'crypto',
+    };
+    return typeMap[assetTypeId] || 'unknown';
+  }
+
+  private async getAssetHistorySummary(userAssetId: number, manager: any) {
+    // 1. 모든 통계를 한 번에 조회
+    const stats = await manager
+      .createQueryBuilder(AssetHistory, 'ah')
+      .select('COUNT(*)', 'total_transactions')
+      .addSelect(
+        'SUM(CASE WHEN ah.asset_history_type_id = 1 THEN ah.quantity ELSE 0 END)',
+        'total_buy_quantity',
+      )
+      .addSelect(
+        'SUM(CASE WHEN ah.asset_history_type_id = 2 THEN ah.quantity ELSE 0 END)',
+        'total_sell_quantity',
+      )
+      .addSelect(
+        'SUM(CASE WHEN ah.asset_history_type_id = 1 THEN ah.total_amount ELSE 0 END)',
+        'total_buy_amount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN ah.asset_history_type_id = 2 THEN ah.total_amount ELSE 0 END)',
+        'total_sell_amount',
+      )
+      .where('ah.user_asset_id = :userAssetId', { userAssetId })
+      .getRawOne();
+
+    // 2. UserAsset 정보 조회
+    const userAsset = await manager.findOne(UserAsset, {
+      where: { id: userAssetId },
+      select: ['quantity', 'avg_price'],
+    });
+
+    return {
+      total_transactions: Number(stats.total_transactions),
+      current_quantity: Number(userAsset.quantity),
+      avg_price: Number(userAsset.avg_price),
+      total_buy_quantity: Number(stats.total_buy_quantity || 0),
+      total_sell_quantity: Number(stats.total_sell_quantity || 0),
+      total_buy_amount: Number(stats.total_buy_amount || 0),
+      total_sell_amount: Number(stats.total_sell_amount || 0),
+    };
+  }
 
   async createAssetHistory(
     createAssetHistoryRequestDto: CreateAssetHistoryRequestDto,

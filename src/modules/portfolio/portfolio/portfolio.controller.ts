@@ -133,58 +133,6 @@ export class PortfolioController {
     );
   }
 
-  @Get(':portfolio_id/categories/:category_id/assets/:asset_id/histories')
-  @ApiOperation({ summary: '종목 거래내역 조회' })
-  @ApiHistoryParams()
-  @ApiQuery({
-    name: 'order',
-    description: '정렬 순서',
-    example: 'desc',
-    type: GetAssetHistoryQueryDto,
-  })
-  @ApiGetAssetHistoryResponse()
-  @ApiCommonErrorResponsesWithNotFound()
-  async getAssetHistory(
-    @Param() getAssetHistoryParamDto: GetAssetHistoryParamDto,
-    @Query() getAssetHistoryQueryDto: GetAssetHistoryQueryDto,
-  ): Promise<GetAssetHistoryResponseDto> {
-    const mockData: GetAssetHistoryResponseDto = {
-      success: true,
-      message: 'Transaction histories retrieved successfully.',
-      data: {
-        currency_code: 'KRW',
-        portfolio_id: 1,
-        category_id: 3,
-        category_name: '국내주식',
-        institution_id: 1,
-        institution_name: '키움증권',
-        asset_id: 102,
-        asset_name: '삼성전자',
-        histories: [
-          {
-            asset_history_id: 558,
-            type: 'buy',
-            quantity: 10,
-            price: 74000,
-            total: 740000,
-            recorded_at: '2025-01-04',
-            memo: undefined,
-          },
-          {
-            asset_history_id: 557,
-            type: 'sell',
-            quantity: 20,
-            price: 73000,
-            total: 1460000,
-            recorded_at: '2025-01-04',
-            memo: '분할매수',
-          },
-        ],
-      },
-    };
-    return mockData;
-  }
-
   @Delete(
     ':portfolio_id/categories/:category_id/assets/:asset_id/histories/:history_id',
   )

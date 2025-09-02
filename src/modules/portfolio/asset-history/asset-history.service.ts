@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AssetHistoryRepository } from './asset-history.repository';
-import { CreateAssetHistoryRequestDto } from '../dto';
+import { CreateAssetHistoryRequestDto, GetAssetHistoryQueryDto } from '../dto';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { PortfolioValidator } from '../lib/portfolio-validator';
 
@@ -10,6 +10,74 @@ export class AssetHistoryService {
     private readonly assetHistoryRepository: AssetHistoryRepository,
     private readonly portfolioValidator: PortfolioValidator,
   ) {}
+
+  async getAssetHistories(
+    portfolioId: number,
+    categoryId: number,
+    assetId: number,
+    userId: string,
+    queryDto: GetAssetHistoryQueryDto,
+  ) {
+    try {
+      // 1. 포트폴리오, 카테고리, 자산 소유권 검증
+      await this.portfolioValidator.validatePortfolioAndFindUserAsset(
+        portfolioId,
+        categoryId,
+        assetId,
+        userId,
+      );
+
+      // 2. 거래내역 조회
+      const result = await this.assetHistoryRepository.getAssetHistories(
+        portfolioId,
+        categoryId,
+        assetId,
+        userId,
+        queryDto,
+      );
+
+      return {
+        success: true,
+        message: 'Transaction histories retrieved successfully.',
+        data: result,
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Category not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Asset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Asset not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'UserAsset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('UserAsset not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to retrieve asset histories',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   async createAssetHistory(
     portfolioId: number,
