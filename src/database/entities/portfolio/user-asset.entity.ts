@@ -78,7 +78,4 @@ export class UserAsset {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
-
-  @Column({ type: 'boolean', default: false })
-  deleted: boolean;
 }
