@@ -2,11 +2,13 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AssetHistoryRepository } from './asset-history.repository';
 import { CreateAssetHistoryRequestDto } from '../dto';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { PortfolioValidator } from '../lib/portfolio-validator';
 
 @Injectable()
 export class AssetHistoryService {
   constructor(
     private readonly assetHistoryRepository: AssetHistoryRepository,
+    private readonly portfolioValidator: PortfolioValidator,
   ) {}
 
   async createAssetHistory(
@@ -22,12 +24,10 @@ export class AssetHistoryService {
       // 3. UserAsset에 자산 존재여부 확인
       // 4. UserAsset 존재 여부 확인
       const validationResult =
-        await this.assetHistoryRepository.validatePortfolioAndFindUserAsset(
+        await this.portfolioValidator.validatePortfolioAndFindUserAsset(
           portfolioId,
           categoryId,
           assetId,
-          createAssetHistoryRequestDto.institution_id,
-          createAssetHistoryRequestDto.currency_code_id,
           userId,
         );
 
