@@ -20,31 +20,22 @@ import {
   ApiCommonErrorResponses,
   ApiCommonErrorResponsesWithNotFound,
   ApiPortfolioParam,
-  ApiCategoryParams,
-  ApiAssetParams,
   ApiHistoryParams,
   ApiGetAllPortfolioResponse,
   ApiCreatePortfolio,
   ApiDeletePortfolioResponse,
   ApiUpdatePortfolio,
   ApiGetPortfolioSummaryResponse,
-  ApiCreateAssetHistory,
-  ApiDeleteAssetResponse,
   ApiGetAssetHistoryResponse,
   ApiDeleteAssetHistoryResponse,
   ApiUpdateAssetHistory,
 } from 'src/common/swagger';
 
 import {
-  CreateAssetHistoryParamDto,
-  CreateAssetHistoryRequestDto,
-  CreateAssetHistoryResponseDto,
   CreatePortfolioRequestDto,
   CreatePortfolioResponseDto,
   DeleteAssetHistoryParamsDto,
   DeleteAssetHistoryResponseDto,
-  DeleteAssetParamDto,
-  DeleteAssetResponseDto,
   DeletePortfolioParamDto,
   DeletePortfolioResponseDto,
   GetAllPortfolioResponseDto,
@@ -140,27 +131,6 @@ export class PortfolioController {
       Number(getPortfolioSummaryParamDto.portfolio_id),
       user.id,
     );
-  }
-
-
-
-  @Delete(':portfolio_id/categories/:category_id/assets/:asset_id')
-  @ApiOperation({ summary: '자산 삭제' })
-  @ApiAssetParams()
-  @ApiDeleteAssetResponse()
-  @ApiCommonErrorResponsesWithNotFound()
-  async deleteAsset(
-    @Param() deleteAssetParamDto: DeleteAssetParamDto,
-  ): Promise<DeleteAssetResponseDto> {
-    const mockData: DeleteAssetResponseDto = {
-      success: true,
-      message: 'Asset deleted successfully.',
-      data: {
-        asset_id: 102,
-        deleted_at: '2025-07-03T13:10:45.000Z',
-      },
-    };
-    return mockData;
   }
 
   @Get(':portfolio_id/categories/:category_id/assets/:asset_id/histories')
