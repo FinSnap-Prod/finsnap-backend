@@ -29,6 +29,7 @@ import { User } from 'src/database/entities/user/user.entity';
 import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
 import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
 import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
+import { PortfolioValidator } from './lib/portfolio-validator';
 
 @Module({
   imports: [
@@ -59,12 +60,14 @@ import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
     CategoryRepository,
     AssetRepository,
     AssetHistoryRepository,
+    PortfolioValidator,
   ],
   exports: [
     PortfolioService,
     CategoryService,
     AssetService,
     AssetHistoryService,
+    PortfolioValidator,
   ],
 })
 export class PortfolioModule {}
