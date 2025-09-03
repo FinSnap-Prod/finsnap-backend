@@ -293,7 +293,7 @@ export class AssetHistoryRepository {
         institution_id,
         currency_code_id,
         avg_price: price.toString(),
-        quantity: quantity.toString(),
+        quantity: '0',
         eval_amount: '0',
         profit_loss: '0',
         profit_rate: '0',
@@ -387,6 +387,62 @@ export class AssetHistoryRepository {
       return await executeInTransaction(manager);
     } else {
       return this.dataSource.transaction(executeInTransaction);
+    }
+  }
+
+  async getAssetHistory(historyId: number) {
+    return await this.dataSource.manager.findOne(AssetHistory, {
+      where: { id: historyId },
+    });
+  }
+
+  async deleteAssetHistory(historyId: number, manager: any) {
+    return await manager.delete(AssetHistory, { id: historyId });
+  }
+
+  async updateUserAssetQuantityForDelete(
+    userAssetId: number,
+    assetHistoryTypeId: number,
+    quantity: number,
+    manager: any,
+  ) {
+    const executeInTransaction = async (transactionManager: any) => {
+      const userAsset = await transactionManager.findOne(UserAsset, {
+        where: { id: userAssetId },
+      });
+
+      if (!userAsset) {
+        throw new Error('UserAsset not found');
+      }
+
+      const currentQuantity = Number(userAsset.quantity);
+      let newQuantity: number;
+
+      if (assetHistoryTypeId === 1) {
+        // 매수 거래 삭제 -> 수량 차감
+        newQuantity = currentQuantity - quantity;
+      } else if (assetHistoryTypeId === 2) {
+        // 매도 거래 삭제 -> 수량 증가
+        newQuantity = currentQuantity + quantity;
+
+        if (newQuantity < 0) {
+          throw new Error('Quantity cannot be negative');
+        }
+      } else {
+        return;
+      }
+
+      await transactionManager.update(UserAsset, userAssetId, {
+        quantity: newQuantity.toString(),
+      });
+
+      return newQuantity;
+    };
+
+    if (manager) {
+      return await executeInTransaction(manager); // 기존 트랜잭션 사용
+    } else {
+      return this.dataSource.transaction(executeInTransaction); // 새 트랜잭션 생성
     }
   }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -12,12 +13,17 @@ import { ApiOperation } from '@nestjs/swagger';
 import {
   ApiCategoryParams,
   ApiCommonErrorResponses,
+  ApiCommonErrorResponsesWithNotFound,
   ApiCreateAssetHistory,
+  ApiDeleteAssetHistoryResponse,
+  ApiHistoryParams,
 } from 'src/common/swagger';
 import {
   CreateAssetHistoryParamDto,
   CreateAssetHistoryRequestDto,
   CreateAssetHistoryResponseDto,
+  DeleteAssetHistoryParamDto,
+  DeleteAssetHistoryResponseDto,
   GetAssetHistoryParamDto,
   GetAssetHistoryQueryDto,
   GetAssetHistoryResponseDto,
@@ -64,6 +70,27 @@ export class AssetHistoryController {
       Number(createAssetHistoryParamDto.category_id),
       Number(createAssetHistoryParamDto.asset_id),
       createAssetHistoryRequestDto,
+      user.id,
+    );
+  }
+
+  @Delete(
+    ':portfolio_id/categories/:category_id/assets/:asset_id/histories/:history_id',
+  )
+  @ApiOperation({ summary: '거래내역 삭제' })
+  @ApiHistoryParams()
+  @ApiDeleteAssetHistoryResponse()
+  @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
+  async deleteAssetHistory(
+    @Param() deleteAssetHistoryParamsDto: DeleteAssetHistoryParamDto,
+    @User() user: any,
+  ): Promise<DeleteAssetHistoryResponseDto> {
+    return await this.assetHistoryService.deleteAssetHistory(
+      Number(deleteAssetHistoryParamsDto.portfolio_id),
+      Number(deleteAssetHistoryParamsDto.category_id),
+      Number(deleteAssetHistoryParamsDto.asset_id),
+      Number(deleteAssetHistoryParamsDto.history_id),
       user.id,
     );
   }

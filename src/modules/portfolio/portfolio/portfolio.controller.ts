@@ -6,16 +6,10 @@ import {
   Param,
   Post,
   Put,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ApiCommonErrorResponses,
   ApiCommonErrorResponsesWithNotFound,
@@ -26,22 +20,15 @@ import {
   ApiDeletePortfolioResponse,
   ApiUpdatePortfolio,
   ApiGetPortfolioSummaryResponse,
-  ApiGetAssetHistoryResponse,
-  ApiDeleteAssetHistoryResponse,
   ApiUpdateAssetHistory,
 } from 'src/common/swagger';
 
 import {
   CreatePortfolioRequestDto,
   CreatePortfolioResponseDto,
-  DeleteAssetHistoryParamsDto,
-  DeleteAssetHistoryResponseDto,
   DeletePortfolioParamDto,
   DeletePortfolioResponseDto,
   GetAllPortfolioResponseDto,
-  GetAssetHistoryParamDto,
-  GetAssetHistoryQueryDto,
-  GetAssetHistoryResponseDto,
   GetPortfolioSummaryParamDto,
   GetPortfolioSummaryResponseDto,
   UpdateAssetHistoryParamsDto,
@@ -131,27 +118,6 @@ export class PortfolioController {
       Number(getPortfolioSummaryParamDto.portfolio_id),
       user.id,
     );
-  }
-
-  @Delete(
-    ':portfolio_id/categories/:category_id/assets/:asset_id/histories/:history_id',
-  )
-  @ApiOperation({ summary: '거래내역 삭제' })
-  @ApiHistoryParams()
-  @ApiDeleteAssetHistoryResponse()
-  @ApiCommonErrorResponsesWithNotFound()
-  async deleteAssetHistory(
-    @Param() deleteAssetHistoryParamsDto: DeleteAssetHistoryParamsDto,
-  ): Promise<DeleteAssetHistoryResponseDto> {
-    const mockData: DeleteAssetHistoryResponseDto = {
-      success: true,
-      message: 'History deleted successfully.',
-      data: {
-        asset_history_id: 555,
-        deleted_at: '2025-07-03T15:00:00.000Z',
-      },
-    };
-    return mockData;
   }
 
   @Put(
