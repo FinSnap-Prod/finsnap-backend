@@ -1,6 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { AssetHistoryRepository } from './asset-history.repository';
-import { CreateAssetHistoryRequestDto, GetAssetHistoryQueryDto } from '../dto';
+import {
+  CreateAssetHistoryRequestDto,
+  GetAssetHistoryQueryDto,
+  UpdateAssetHistoryRequestDto,
+} from '../dto';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { PortfolioValidator } from '../lib/portfolio-validator';
 import { DataSource } from 'typeorm';
@@ -264,6 +268,97 @@ export class AssetHistoryService {
         ErrorResponseUtil.internalServerError('Failed to delete asset history'),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  async updateAssetHistory(
+    portfolioId: number,
+    categoryId: number,
+    assetId: number,
+    historyId: number,
+    updateAssetHistoryRequestDto: UpdateAssetHistoryRequestDto,
+    userId: string,
+  ) {
+    try {
+      // 1) 포트폴리오, 카테고리, 자산 소유권 검증 및 UserAsset 확인
+      const { userAsset } =
+        await this.portfolioValidator.validatePortfolioAndFindUserAsset(
+          portfolioId,
+          categoryId,
+          assetId,
+          userId,
+        );
+
+      // 2) 거래내역 존재 여부 확인 및 소유권 검증
+      const existing = await this.assetHistoryRepository.getAssetHistory(
+        historyId,
+      );
+      if (!existing) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Asset history not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (userAsset && existing.user_asset_id !== userAsset.id) {
+        // 경로상의 자산/카테고리와 거래내역의 소유관계가 다르면 Not Found 처리
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Asset history not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 3) 트랜잭션으로 업데이트 (수량 조정 + 거래내역 업데이트)
+      const data = await this.assetHistoryRepository.updateAssetHistory(
+        historyId,
+        updateAssetHistoryRequestDto,
+      );
+
+      return {
+        success: true,
+        message: 'Asset history updated successfully.',
+        data,
+      };
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Category not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Asset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Asset not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'UserAsset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('UserAsset not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (
+        error.message === 'Asset history not found' ||
+        error.message === 'Quantity cannot be negative'
+      ) {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(error.message),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

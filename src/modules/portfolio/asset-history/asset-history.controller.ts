@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import {
   ApiCreateAssetHistory,
   ApiDeleteAssetHistoryResponse,
   ApiHistoryParams,
+  ApiUpdateAssetHistory,
 } from 'src/common/swagger';
 import {
   CreateAssetHistoryParamDto,
@@ -27,6 +29,9 @@ import {
   GetAssetHistoryParamDto,
   GetAssetHistoryQueryDto,
   GetAssetHistoryResponseDto,
+  UpdateAssetHistoryParamDto,
+  UpdateAssetHistoryRequestDto,
+  UpdateAssetHistoryResponseDto,
 } from '../dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards';
 import { User } from 'src/modules/auth/decorators/user.decorator';
@@ -91,6 +96,29 @@ export class AssetHistoryController {
       Number(deleteAssetHistoryParamsDto.category_id),
       Number(deleteAssetHistoryParamsDto.asset_id),
       Number(deleteAssetHistoryParamsDto.history_id),
+      user.id,
+    );
+  }
+
+  @Put(
+    ':portfolio_id/categories/:category_id/assets/:asset_id/histories/:history_id',
+  )
+  @ApiOperation({ summary: '거래내역 수정' })
+  @ApiHistoryParams()
+  @ApiUpdateAssetHistory()
+  @ApiCommonErrorResponsesWithNotFound()
+  @UseGuards(JwtAuthGuard)
+  async updateAssetHistory(
+    @Param() updateAssetHistoryParamsDto: UpdateAssetHistoryParamDto,
+    @Body() updateAssetHistoryRequestDto: UpdateAssetHistoryRequestDto,
+    @User() user: any,
+  ): Promise<UpdateAssetHistoryResponseDto> {
+    return await this.assetHistoryService.updateAssetHistory(
+      Number(updateAssetHistoryParamsDto.portfolio_id),
+      Number(updateAssetHistoryParamsDto.category_id),
+      Number(updateAssetHistoryParamsDto.asset_id),
+      Number(updateAssetHistoryParamsDto.history_id),
+      updateAssetHistoryRequestDto,
       user.id,
     );
   }
