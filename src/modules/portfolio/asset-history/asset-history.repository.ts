@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
 import { DataSource } from 'typeorm';
-import { CreateAssetHistoryRequestDto, GetAssetHistoryQueryDto } from '../dto';
+import {
+  CreateAssetHistoryRequestDto,
+  GetAssetHistoryQueryDto,
+  UpdateAssetHistoryRequestDto,
+} from '../dto';
 import { AssetHistory } from 'src/database/entities/portfolio/asset-history.entity';
 import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
 import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
@@ -155,6 +159,17 @@ export class AssetHistoryRepository {
       3: 'crypto',
     };
     return typeMap[assetTypeId] || 'unknown';
+  }
+
+  private getTypeNameById(typeId: number): string {
+    const map: Record<number, string> = {
+      1: 'buy',
+      2: 'sell',
+      3: 'deposit',
+      4: 'withdraw',
+      5: 'exchange',
+    };
+    return map[typeId] || 'unknown';
   }
 
   private async getAssetHistorySummary(userAssetId: number, manager: any) {
@@ -398,6 +413,164 @@ export class AssetHistoryRepository {
 
   async deleteAssetHistory(historyId: number, manager: any) {
     return await manager.delete(AssetHistory, { id: historyId });
+  }
+
+  async updateAssetHistory(
+    historyId: number,
+    dto: UpdateAssetHistoryRequestDto,
+  ) {
+    const {
+      asset_history_type_id: newTypeId,
+      price: newPrice,
+      quantity: newQty,
+      memo: newMemo,
+      recorded_at: newRecordedAt,
+      institution_id,
+      currency_code_id,
+    } = dto;
+
+    return this.dataSource.transaction(async (manager) => {
+      // 1) 기존 거래내역 + 관련 UserAsset 로드
+      const existing = await manager.findOne(AssetHistory, {
+        where: { id: historyId },
+      });
+
+      if (!existing) {
+        throw new Error('Asset history not found');
+      }
+
+      const userAsset = await manager.findOne(UserAsset, {
+        where: { id: existing.user_asset_id },
+        relations: [
+          'category',
+          'category.portfolio',
+          'asset',
+          'institution',
+          'currency_code',
+        ],
+      });
+
+      if (!userAsset) {
+        throw new Error('UserAsset not found');
+      }
+
+      // 2) 수량 변화량 계산 (buy=+qty, sell=-qty; 기타 타입 0)
+      const oldTypeId = existing.asset_history_type_id;
+      const oldQty = Number(existing.quantity);
+      const currentQty = Number(userAsset.quantity);
+
+      const effect = (typeId: number, qty: number) => {
+        if (typeId === 1) return qty; // buy
+        if (typeId === 2) return -qty; // sell
+        return 0; // deposit/withdraw/exchange는 수량 영향 없음
+      };
+
+      /**
+       * 기존 매수 (1, 10)
+       * 수정 매도 (2, 20)
+       * effect(2, 20) - effect(1, 10) = -10
+       * nextUserAssetQty = currentQty + delta = 0 - 10 = -10
+       * -10 < 0 -> throw Error
+       *
+       * 기존 매도 (2, 20)
+       * 수정 매수 (1, 10)
+       * effect(1, 10) - effect(2, 20) = 10
+       * nextUserAssetQty = currentQty + delta = 0 + 10 = 10
+       * 10 > 0 -> update UserAsset
+       */
+      const delta = effect(newTypeId, newQty) - effect(oldTypeId, oldQty);
+      const nextUserAssetQty = currentQty + delta;
+
+      if (nextUserAssetQty < 0) {
+        throw new Error('Quantity cannot be negative');
+      }
+
+      // 3) UserAsset 업데이트 (수량, 기관/통화 변경)
+      await manager.update(UserAsset, userAsset.id, {
+        quantity: nextUserAssetQty.toString(),
+        institution_id: institution_id ?? userAsset.institution_id,
+        currency_code_id: currency_code_id ?? userAsset.currency_code_id,
+        // TODO: avg_price 재계산은 추후 공통 함수로 처리 예정
+      });
+
+      // 4) 거래내역 업데이트
+      const updatedTotal = (newPrice * newQty).toString();
+      await manager.update(AssetHistory, existing.id, {
+        asset_history_type_id: newTypeId,
+        price: newPrice.toString(),
+        quantity: newQty.toString(),
+        total_amount: updatedTotal,
+        recorded_at: new Date(newRecordedAt),
+        memo: newMemo ?? undefined,
+      });
+
+      // 5) 응답 구성에 필요한 이름/타입 문자열 준비
+      // 자산 이름 조회
+      let assetName = '';
+      switch (userAsset.asset.asset_type_id) {
+        case 1: {
+          const stockInfo = await manager.findOne(StockInfo, {
+            where: { id: userAsset.asset.asset_info_id },
+          });
+          assetName = stockInfo?.kor_name || stockInfo?.eng_name || '';
+          break;
+        }
+        case 2: {
+          const etfInfo = await manager.findOne(EtfInfo, {
+            where: { id: userAsset.asset.asset_info_id },
+          });
+          assetName = etfInfo?.kor_name || etfInfo?.eng_name || '';
+          break;
+        }
+        case 3: {
+          const cryptoInfo = await manager.findOne(CryptoInfo, {
+            where: { id: userAsset.asset.asset_info_id },
+          });
+          assetName = cryptoInfo?.kor_name || cryptoInfo?.eng_name || '';
+          break;
+        }
+        default:
+          assetName = '';
+      }
+
+      const typeName = this.getTypeNameById(newTypeId);
+
+      // 6) 응답 객체 구성
+      return {
+        asset_info: {
+          asset_id: userAsset.asset_id,
+          asset_name: assetName,
+          asset_type: this.getAssetTypeName(userAsset.asset.asset_type_id),
+        },
+        portfolio_info: {
+          portfolio_id: userAsset.category.portfolio_id,
+          portfolio_name: userAsset.category.portfolio?.name || '',
+        },
+        category_info: {
+          category_id: userAsset.category_id,
+          category_name: userAsset.category?.name || '',
+        },
+        institution_info: {
+          institution_id: institution_id ?? userAsset.institution_id,
+          institution_name: userAsset.institution?.display_name || '',
+        },
+        currency_info: {
+          currency_code_id: currency_code_id ?? userAsset.currency_code_id,
+          currency_code: userAsset.currency_code?.currency_code || 'KRW',
+        },
+        updated_history: {
+          asset_history_id: existing.id,
+          asset_history_type_id: newTypeId,
+          type_name: typeName,
+          quantity: newQty,
+          price: newPrice,
+          total_amount: Number(updatedTotal),
+          recorded_at: new Date(newRecordedAt).toISOString(),
+          memo: newMemo ?? null,
+          updated_at: new Date().toISOString(),
+        },
+      };
+    });
   }
 
   async updateUserAssetQuantityForDelete(
