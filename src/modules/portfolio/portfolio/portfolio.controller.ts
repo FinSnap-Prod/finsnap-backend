@@ -14,13 +14,11 @@ import {
   ApiCommonErrorResponses,
   ApiCommonErrorResponsesWithNotFound,
   ApiPortfolioParam,
-  ApiHistoryParams,
   ApiGetAllPortfolioResponse,
   ApiCreatePortfolio,
   ApiDeletePortfolioResponse,
   ApiUpdatePortfolio,
   ApiGetPortfolioSummaryResponse,
-  ApiUpdateAssetHistory,
 } from 'src/common/swagger';
 
 import {
@@ -31,9 +29,6 @@ import {
   GetAllPortfolioResponseDto,
   GetPortfolioSummaryParamDto,
   GetPortfolioSummaryResponseDto,
-  UpdateAssetHistoryParamsDto,
-  UpdateAssetHistoryRequestDto,
-  UpdateAssetHistoryResponseDto,
   UpdatePortfolioRequestDto,
   UpdatePortfolioResponseDto,
 } from '../dto';
@@ -118,41 +113,5 @@ export class PortfolioController {
       Number(getPortfolioSummaryParamDto.portfolio_id),
       user.id,
     );
-  }
-
-  @Put(
-    ':portfolio_id/categories/:category_id/assets/:asset_id/histories/:history_id',
-  )
-  @ApiOperation({ summary: '거래내역 수정' })
-  @ApiHistoryParams()
-  @ApiUpdateAssetHistory()
-  @ApiCommonErrorResponsesWithNotFound()
-  async updateAssetHistory(
-    @Param() updateAssetHistoryParamsDto: UpdateAssetHistoryParamsDto,
-    @Body() updateAssetHistoryRequestDto: UpdateAssetHistoryRequestDto,
-  ): Promise<UpdateAssetHistoryResponseDto> {
-    const mockData: UpdateAssetHistoryResponseDto = {
-      success: true,
-      message: 'Transaction histories retrieved successfully.',
-      data: {
-        currency_code: 'KRW',
-        portfolio_id: 1,
-        category_id: 3,
-        category_name: '국내주식',
-        institution_id: 1,
-        institution_name: '키움증권',
-        asset_id: 102,
-        histories: {
-          asset_history_id: 558,
-          type: 'sell',
-          quantity: 20,
-          price: 12500,
-          total: 250000,
-          recorded_at: '2025-01-04',
-          memo: undefined,
-        },
-      },
-    };
-    return mockData;
   }
 }
