@@ -1,20 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
-export class DeleteAssetHistoryParamsDto {
-  @ApiProperty({ description: '포트폴리오 ID', example: 1 })
-  @IsInt()
-  portfolio_id: number;
+export class DeleteAssetHistoryParamDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: '포트폴리오 ID', example: '1' })
+  portfolio_id: string;
 
-  @ApiProperty({ description: '카테고리 ID', example: 1 })
-  @IsInt()
-  category_id: number;
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: '카테고리 ID', example: '1' })
+  category_id: string;
 
-  @ApiProperty({ description: '자산 ID', example: 1 })
-  @IsInt()
-  asset_id: number;
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: '자산 ID', example: '1' })
+  asset_id: string;
 
-  @ApiProperty({ description: '거래내역 ID', example: 1 })
-  @IsInt()
-  history_id: number;
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: '거래내역 ID', example: '1' })
+  history_id: string;
 }
