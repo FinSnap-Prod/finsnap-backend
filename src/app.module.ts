@@ -11,6 +11,8 @@ import { FavoriteModule } from './modules/favorite/favorite.module';
 import { InvestmentModule } from './modules/investment/investment.module';
 import { UserModule } from './modules/user/user.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -24,6 +26,6 @@ import { PortfolioModule } from './modules/portfolio/portfolio.module';
     UserModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}
