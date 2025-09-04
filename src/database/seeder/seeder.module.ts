@@ -38,6 +38,8 @@ import { MarketRegion } from '../entities/code/market-region.entity';
 import { Asset } from '../entities/asset/asset.entity';
 import { CodeMasterSeeder } from './code-master.seeder';
 import { AssetIndexSeeder } from './asset-index.seeder';
+import { ExchangeRateDaily } from '../entities/exchange/exchange-rate-daily.entity';
+import { ExchangeSeeder } from './exchange/exchange.seeder';
 
 @Module({
   imports: [
@@ -59,6 +61,7 @@ import { AssetIndexSeeder } from './asset-index.seeder';
       InterestType,
       MarketRegion,
       Asset,
+      ExchangeRateDaily,
     ]),
   ],
   providers: [
@@ -84,6 +87,7 @@ import { AssetIndexSeeder } from './asset-index.seeder';
     OverseasCryptoMasterSeeder,
     OverseasCryptoMarketSeeder,
     OverseasCryptoPriceHistorySeeder,
+    ExchangeSeeder,
   ],
   exports: [
     CodeMasterSeeder,
@@ -108,6 +112,7 @@ import { AssetIndexSeeder } from './asset-index.seeder';
     OverseasCryptoMasterSeeder,
     OverseasCryptoMarketSeeder,
     OverseasCryptoPriceHistorySeeder,
+    ExchangeSeeder,
   ],
 })
 export class SeederModule {}

@@ -22,6 +22,7 @@ import { OverseasCryptoMarketSeeder } from './overseas/crypto/crypto-market.seed
 import { OverseasCryptoPriceHistorySeeder } from './overseas/crypto/crpyto-price-history.seeder';
 import { CodeMasterSeeder } from './code-master.seeder';
 import { AssetIndexSeeder } from './asset-index.seeder';
+import { ExchangeSeeder } from './exchange/exchange.seeder';
 
 // 지연 함수
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,6 +62,7 @@ async function bootstrap() {
     overseasCryptoMaster: app.get(OverseasCryptoMasterSeeder),
     overseasCryptoMarket: app.get(OverseasCryptoMarketSeeder),
     overseasCryptoPriceHistory: app.get(OverseasCryptoPriceHistorySeeder),
+    exchange: app.get(ExchangeSeeder),
   };
 
   console.log('--- All Seeders Start (Sequential Processing) ---');
@@ -69,6 +71,11 @@ async function bootstrap() {
   console.log('0️⃣ Running code master seeder...');
   await runSeeder(seeders.codeMaster, 'Code master seeder');
   console.log('✅ Code master seeder finished.');
+
+  // 7. Exchange Rates (KRW-based FX)
+  console.log('7️⃣ Running exchange rate seeder...');
+  await runSeeder(seeders.exchange, 'Exchange rate seeder');
+  console.log('✅ Exchange rate seeder finished.');
 
   // 1. Master Data
   console.log('1️⃣ Running master data seeders...');

@@ -22,6 +22,7 @@
     "overseas-master": "ts-node -r tsconfig-paths/register src/database/seeder/overseas/run-overseas-master.ts",
     "seed:code-master": "ts-node -r tsconfig-paths/register src/database/seeder/run-code-master.ts",
     "seed:asset-index": "ts-node -r tsconfig-paths/register src/database/seeder/run-asset-index.ts",
+    "seed:exchange": "ts-node -r tsconfig-paths/register src/database/seeder/run-exchange-seeder.ts",
     "all-seeders": "ts-node -r tsconfig-paths/register src/database/seeder/run-all-seeders.ts"
   },
   "dependencies": {
