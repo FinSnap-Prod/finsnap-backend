@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 
@@ -35,7 +34,6 @@ import {
   UpdateCategoryResponseDto,
 } from '../dto';
 import { ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/modules/auth/guards';
 import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @Controller('portfolios/:portfolio_id/categories')
@@ -98,7 +96,6 @@ export class CategoryController {
   @ApiCategoryParams()
   @ApiCreateCategory()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async createCategory(
     @Param() createCategoryParamDto: CreateCategoryParamDto,
     @Body() createCategoryRequestDto: CreateCategoryRequestDto,
@@ -116,7 +113,6 @@ export class CategoryController {
   @ApiCategoryParams()
   @ApiDeleteCategoryResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async deleteCategory(
     @Param() deleteCategoryParamDto: DeleteCategoryParamDto,
     @User() user: any,
@@ -133,7 +129,6 @@ export class CategoryController {
   @ApiCategoryParams()
   @ApiUpdateCategory()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async updateCategory(
     @Param() updateCategoryParamDto: UpdateCategoryParamDto,
     @Body() updateCategoryRequestDto: UpdateCategoryRequestDto,

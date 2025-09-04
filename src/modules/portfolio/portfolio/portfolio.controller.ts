@@ -6,7 +6,6 @@ import {
   Param,
   Post,
   Put,
-  UseGuards,
 } from '@nestjs/common';
 import { PortfolioService } from './portfolio.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -32,7 +31,6 @@ import {
   UpdatePortfolioRequestDto,
   UpdatePortfolioResponseDto,
 } from '../dto';
-import { JwtAuthGuard } from 'src/modules/auth/guards';
 import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @ApiTags('portfolios')
@@ -45,7 +43,6 @@ export class PortfolioController {
   @ApiOperation({ summary: '포트폴리오 조회' })
   @ApiGetAllPortfolioResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async getAllPortfolio(
     @User() user: any,
   ): Promise<GetAllPortfolioResponseDto> {
@@ -56,7 +53,6 @@ export class PortfolioController {
   @ApiOperation({ summary: '포트폴리오 생성' })
   @ApiCreatePortfolio()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async createPortfolio(
     @Body() createPortfolioRequestDto: CreatePortfolioRequestDto,
     @User() user: any,
@@ -72,7 +68,6 @@ export class PortfolioController {
   @ApiPortfolioParam()
   @ApiDeletePortfolioResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async deletePortfolio(
     @Param() deletePortfolioParamDto: DeletePortfolioParamDto,
     @User() user: any,
@@ -88,7 +83,6 @@ export class PortfolioController {
   @ApiPortfolioParam()
   @ApiUpdatePortfolio()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async updatePortfolio(
     @Body() updatePortfolioRequestDto: UpdatePortfolioRequestDto,
     @User() user: any,
@@ -104,7 +98,6 @@ export class PortfolioController {
   @ApiPortfolioParam()
   @ApiGetPortfolioSummaryResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async getPortfolioSummary(
     @Param() getPortfolioSummaryParamDto: GetPortfolioSummaryParamDto,
     @User() user: any,

@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Param } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -7,7 +7,6 @@ import {
   ApiDeleteAssetResponse,
 } from 'src/common/swagger';
 import { DeleteAssetParamDto, DeleteAssetResponseDto } from '../dto';
-import { JwtAuthGuard } from 'src/modules/auth/guards';
 import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @ApiTags('portfolios')
@@ -21,7 +20,6 @@ export class AssetController {
   @ApiAssetParams()
   @ApiDeleteAssetResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async deleteAsset(
     @Param() deleteAssetParamDto: DeleteAssetParamDto,
     @User() user: any,

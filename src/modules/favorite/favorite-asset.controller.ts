@@ -38,7 +38,6 @@ import {
   ApiDeleteFavoriteAssetResponse,
   ApiUpdateFavoriteAsset,
 } from 'src/common/swagger';
-import { JwtAuthGuard } from '../auth/guards';
 import { User } from '../auth/decorators/user.decorator';
 
 @ApiTags('favorites')
@@ -64,7 +63,6 @@ export class FavoriteAssetController {
   })
   @ApiGetFavoriteAssetsResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async getFavoriteAssets(
     @Param() getFavoriteAssetsParamDto: GetFavoriteAssetsParamDto,
     @Query() getFavoriteAssetsQueryDto: GetFavoriteAssetsQueryDto,
@@ -83,7 +81,6 @@ export class FavoriteAssetController {
   @ApiFavoriteFolderParam()
   @ApiCreateFavoriteAssetResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async createFavoriteAsset(
     @Param() createFavoriteAssetParamDto: CreateFavoriteAssetParamDto,
     @Body() createFavoriteAssetBodyDto: CreateFavoriteAssetBodyDto,
@@ -102,7 +99,6 @@ export class FavoriteAssetController {
   @ApiFavoriteAssetParams()
   @ApiDeleteFavoriteAssetResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async deleteFavoriteAsset(
     @Param() deleteFavoriteAssetParamDto: DeleteFavoriteAssetParamDto,
     @User() user: any,
@@ -119,7 +115,6 @@ export class FavoriteAssetController {
   @ApiFavoriteFolderParam()
   @ApiUpdateFavoriteAsset()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async updateFavoriteAsset(
     @Param() updateFavoriteAssetParamDto: UpdateFavoriteAssetParamsDto,
     @Body() updateFavoriteAssetBodyDto: UpdateFavoriteAssetBodyDto,

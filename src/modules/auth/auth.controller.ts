@@ -31,7 +31,8 @@ import {
 import { ErrorResponseDto } from 'src/common/swagger/dto/error-response.dto';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { User } from './decorators/user.decorator';
-import { JwtAuthGuard, RefreshGuard } from './guards';
+import { RefreshGuard } from './guards';
+import { Public } from './decorators/public.decorator';
 
 const COOKIE_OPTIONS = {
   httpOnly: false, // 개발자 도구에서 쿠키 확인 가능
@@ -48,6 +49,7 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('refresh')
   @ApiOperation({ summary: '액세스 토큰 갱신' })
   @ApiRefreshResponse()
@@ -88,7 +90,6 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '로그아웃' })
   @ApiLogoutResponse()
   @ApiCommonErrorResponses()
@@ -127,6 +128,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post(':provider')
   @ApiOperation({ summary: 'Google 토큰 검증 및 로그인' })
   @ApiLoginRequest()

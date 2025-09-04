@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { AssetHistoryService } from './asset-history.service';
 import { ApiOperation } from '@nestjs/swagger';
@@ -33,7 +32,6 @@ import {
   UpdateAssetHistoryRequestDto,
   UpdateAssetHistoryResponseDto,
 } from '../dto';
-import { JwtAuthGuard } from 'src/modules/auth/guards';
 import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @Controller('portfolios')
@@ -44,7 +42,6 @@ export class AssetHistoryController {
   @ApiOperation({ summary: '자산 거래내역 조회' })
   @ApiCategoryParams()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async getAssetHistories(
     @Param() getAssetHistoryParamDto: GetAssetHistoryParamDto,
     @Query() getAssetHistoryQueryDto: GetAssetHistoryQueryDto,
@@ -64,7 +61,6 @@ export class AssetHistoryController {
   @ApiCategoryParams()
   @ApiCreateAssetHistory()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async createAssetHistory(
     @Param() createAssetHistoryParamDto: CreateAssetHistoryParamDto,
     @Body() createAssetHistoryRequestDto: CreateAssetHistoryRequestDto,
@@ -86,7 +82,6 @@ export class AssetHistoryController {
   @ApiHistoryParams()
   @ApiDeleteAssetHistoryResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async deleteAssetHistory(
     @Param() deleteAssetHistoryParamsDto: DeleteAssetHistoryParamDto,
     @User() user: any,
@@ -107,7 +102,6 @@ export class AssetHistoryController {
   @ApiHistoryParams()
   @ApiUpdateAssetHistory()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async updateAssetHistory(
     @Param() updateAssetHistoryParamsDto: UpdateAssetHistoryParamDto,
     @Body() updateAssetHistoryRequestDto: UpdateAssetHistoryRequestDto,
