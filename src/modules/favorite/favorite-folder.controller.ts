@@ -6,7 +6,6 @@ import {
   Param,
   Post,
   Put,
-  UseGuards,
 } from '@nestjs/common';
 import { FavoriteFolderService } from './favorite-folder.service';
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -27,7 +26,6 @@ import {
   ApiDeleteFavoriteFolderResponse,
   ApiUpdateFavoriteFolderResponse,
 } from 'src/common/swagger';
-import { JwtAuthGuard } from '../auth/guards';
 import { User } from '../auth/decorators/user.decorator';
 
 @ApiTags('favorites')
@@ -40,7 +38,6 @@ export class FavoriteFolderController {
   @ApiOperation({ summary: '관심종목 폴더 목록 조회' })
   @ApiGetFavoriteFoldersResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async getFavoriteFolders(
     @User() user: any,
   ): Promise<GetFavoriteFoldersResponseDto> {
@@ -51,7 +48,6 @@ export class FavoriteFolderController {
   @ApiOperation({ summary: '관심종목 폴더 생성' })
   @ApiCreateFavoriteFolderResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async createFavoriteFolder(
     @Body() createFavoriteFolderDto: CreateFavoriteFolderDto,
     @User() user: any,
@@ -66,7 +62,6 @@ export class FavoriteFolderController {
   @ApiOperation({ summary: '관심종목 폴더 삭제' })
   @ApiDeleteFavoriteFolderResponse()
   @ApiCommonErrorResponsesWithNotFound()
-  @UseGuards(JwtAuthGuard)
   async deleteFavoriteFolder(
     @Param() deleteFavoriteFolderParamDto: DeleteFavoriteFolderParamDto,
     @User() user: any,
@@ -81,7 +76,6 @@ export class FavoriteFolderController {
   @ApiOperation({ summary: '관심종목 폴더 수정' })
   @ApiUpdateFavoriteFolderResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async updateFavoriteFolder(
     @Body() updateFavoriteFolderBodyDto: UpdateFavoriteFolderBodyDto,
     @User() user: any,

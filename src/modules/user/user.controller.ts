@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Patch,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { UserService } from './user.service';
@@ -26,7 +25,6 @@ import {
   UpdateNicknameResponseDto,
 } from './dto';
 import { User } from '../auth/decorators/user.decorator';
-import { JwtAuthGuard } from '../auth/guards';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @ApiTags('user')
@@ -39,7 +37,6 @@ export class UserController {
   @ApiOperation({ summary: '사용자 닉네임 수정' })
   @ApiUpdateNicknameResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async updateNickname(
     @User() user: any,
     @Body() updateNicknameRequestDto: UpdateNicknameRequestDto,
@@ -60,7 +57,6 @@ export class UserController {
   @ApiOperation({ summary: '사용자 정보 조회' })
   @ApiGetUserResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async getUser(@User() user: any): Promise<GetUserResponseDto> {
     return await this.userService.getUser(user.id);
   }
@@ -69,7 +65,6 @@ export class UserController {
   @ApiOperation({ summary: '사용자 탈퇴' })
   @ApiDeleteUserResponse()
   @ApiCommonErrorResponses()
-  @UseGuards(JwtAuthGuard)
   async deleteUser(
     @User() user: any,
     @Body() deleteUserRequestDto: DeleteUserRequestDto,
