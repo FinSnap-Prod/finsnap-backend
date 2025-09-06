@@ -30,6 +30,11 @@ import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
 import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
 import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
 import { PortfolioValidator } from './lib/portfolio-validator';
+import { CashTransaction } from 'src/database/entities/account/cash-transaction.entity';
+import { PortfolioInstitutionBalance } from 'src/database/entities/account/portfolio-institution-balance.entity';
+import { CashController } from './cash/cash.controller';
+import { CashService } from './cash/cash.service';
+import { CashRepository } from './cash/cash.repository';
 
 @Module({
   imports: [
@@ -42,6 +47,8 @@ import { PortfolioValidator } from './lib/portfolio-validator';
       StockInfo,
       CryptoInfo,
       EtfInfo,
+      CashTransaction,
+      PortfolioInstitutionBalance,
     ]),
     InvestmentModule,
   ],
@@ -50,6 +57,7 @@ import { PortfolioValidator } from './lib/portfolio-validator';
     CategoryController,
     AssetController,
     AssetHistoryController,
+    CashController,
   ],
   providers: [
     PortfolioService,
@@ -61,6 +69,8 @@ import { PortfolioValidator } from './lib/portfolio-validator';
     AssetRepository,
     AssetHistoryRepository,
     PortfolioValidator,
+    CashService,
+    CashRepository,
   ],
   exports: [
     PortfolioService,
@@ -68,6 +78,7 @@ import { PortfolioValidator } from './lib/portfolio-validator';
     AssetService,
     AssetHistoryService,
     PortfolioValidator,
+    CashService,
   ],
 })
 export class PortfolioModule {}
