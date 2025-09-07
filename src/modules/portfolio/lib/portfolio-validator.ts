@@ -91,4 +91,21 @@ export class PortfolioValidator {
       };
     });
   }
+
+  async validatePortfolioForCash(portfolioId: number, userId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 포트폴리오 소유권 검증
+      const portfolio = await manager.findOne(Portfolio, {
+        where: { id: portfolioId, user_id: userId },
+      });
+
+      if (!portfolio) {
+        throw new Error('Portfolio not found');
+      }
+
+      return {
+        portfolio,
+      };
+    });
+  }
 }

@@ -17,16 +17,13 @@ import {
   CashTransactionItem,
   PaginationMeta,
 } from '../dto/responses/cash/get-cash-transactions.dto';
-import {
-  CreateCashTransactionResponseDto,
-  CashTransactionItem as CreatedTxItem,
-  CashBalanceItem as CreatedBalanceItem,
-} from '../dto/responses/cash/create-cash-transaction.dto';
+import { CreateCashTransactionResponseDto } from '../dto/responses/cash/create-cash-transaction.dto';
 import { DeleteCashTransactionResponseDto } from '../dto/responses/cash/delete-cash-transaction.dto';
 import { UpdateCashTransactionResponseDto } from '../dto/responses/cash/update-cash-transaction.dto';
 import { CashTransactionType } from '../dto/enum/cash-transaction-type.enum';
 import { PortfolioValidator } from '../lib/portfolio-validator';
 import { CashCreateType } from '../dto/enum/cash-create-type.enum';
+import { BalancesSortBy } from '../dto/enum/balances-sortby.enum';
 
 @Injectable()
 export class CashService {
@@ -35,39 +32,68 @@ export class CashService {
     private readonly portfolioValidator: PortfolioValidator,
   ) {}
 
+  // TODO 기관별 예수금 조회
   async getCashBalances(
     paramDto: GetCashBalancesParamDto,
     queryDto: GetCashBalancesQueryDto,
+    userId: string,
   ): Promise<GetCashBalancesResponseDto> {
-    const balances = await this.cashRepository.getCashBalances(
-      paramDto,
-      queryDto,
-    );
-    return {
-      success: true,
-      message: 'Cash balances retrieved successfully.',
-      data: {
-        portfolio_id: paramDto.portfolio_id,
-        portfolio_name: '',
-        sorted_by: queryDto?.sortBy ?? 'balance',
-        filters: {
-          institution_id: queryDto?.institution_id,
-          currency_code_id: queryDto?.currency_code_id,
+    try {
+      // 소유권 검증
+      const { portfolio } =
+        await this.portfolioValidator.validatePortfolioForCash(
+          paramDto.portfolio_id,
+          userId,
+        );
+
+      if (!portfolio) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 예수금 조회
+      const balances = await this.cashRepository.getCashBalances(
+        paramDto,
+        queryDto,
+      );
+
+      return {
+        success: true,
+        message: 'Cash balances retrieved successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          portfolio_name: portfolio.name,
+          sorted_by: queryDto?.sortBy ?? BalancesSortBy.BALANCE,
+          filters: {
+            institution_id: queryDto?.institution_id ?? undefined,
+            currency_code_id: queryDto?.currency_code_id ?? undefined,
+          },
+          balances: balances.map((b) => ({
+            institution_id: b.institution_id,
+            institution_name: b.institution?.display_name ?? '',
+            currency_code_id: b.currency_code_id,
+            currency_code: b.currency_code?.currency_code ?? '',
+            symbol: b.currency_code?.symbol ?? '',
+            balance: Number(b.balance),
+            avg_rate:
+              (b as any).avg_rate === null || (b as any).avg_rate === undefined
+                ? null
+                : Number((b as any).avg_rate),
+            updated_at: (b.updated_at as Date).toISOString(),
+          })),
         },
-        // map to response shape when repository implemented
-        balances: (balances as any[]).map(() => ({
-          institution_id: 0,
-          institution_name: '',
-          currency_code_id: 0,
-          currency_code: '',
-          balance: 0,
-          avg_rate: null,
-          updated_at: new Date().toISOString(),
-        })),
-      },
-    };
+      };
+    } catch (error) {
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError('Failed to get cash balances'),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
+  // TODO 예수금 상세 조회
   async getCashTransactions(
     paramDto: GetCashTransactionsParamDto,
     queryDto: GetCashTransactionsQueryDto,
@@ -113,6 +139,7 @@ export class CashService {
     };
   }
 
+  // 예수금 내역 추가
   async createCashTransaction(
     paramDto: CreateCashTransactionParamDto,
     bodyDto: CreateCashTransactionBodyDto,
@@ -232,6 +259,7 @@ export class CashService {
     }
   }
 
+  // TODO 예수금 내역 삭제 (단건)
   async deleteCashTransaction(
     paramDto: DeleteCashTransactionParamDto,
   ): Promise<DeleteCashTransactionResponseDto> {
@@ -253,6 +281,7 @@ export class CashService {
     };
   }
 
+  // TODO 예수금 내역 삭제 (그룹)
   async deleteCashTransactionGroup(
     queryDto: DeleteCashTransactionQueryDto,
   ): Promise<DeleteCashTransactionResponseDto> {
@@ -270,6 +299,7 @@ export class CashService {
     } as any;
   }
 
+  // TODO 예수금 내역 수정
   async updateCashTransaction(
     paramDto: UpdateCashTransactionParamDto,
     bodyDto: UpdateCashTransactionBodyDto,

@@ -35,9 +35,15 @@ export class CashBalanceItem {
 
   @ApiProperty({
     description: '통화 코드',
-    example: '통화 코드',
+    example: 'KRW',
   })
   currency_code: string;
+
+  @ApiProperty({
+    description: '통화 기호',
+    example: '₩',
+  })
+  symbol: string;
 
   @ApiProperty({
     description: '잔액',

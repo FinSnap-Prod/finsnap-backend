@@ -23,6 +23,9 @@ import {
 } from '../dto/requests/cash/update-cash-transaction.dto';
 import { CurrencyCode } from 'src/database/entities/code/currency-code.entity';
 import { PortfolioInstitutionBalance } from 'src/database/entities/account/portfolio-institution-balance.entity';
+import { BalancesSortBy } from '../dto/enum/balances-sortby.enum';
+import { SortOrder } from '../dto/enum/sort-order.enum';
+
 @Injectable()
 export class CashRepository {
   constructor(private dataSource: DataSource) {}
@@ -31,7 +34,53 @@ export class CashRepository {
     paramDto: GetCashBalancesParamDto,
     queryDto: GetCashBalancesQueryDto,
   ) {
-    return this.dataSource.getRepository(CashTransaction).find();
+    const { portfolio_id } = paramDto;
+    const { institution_id, currency_code_id } = queryDto;
+
+    const sortBy = queryDto.sortBy ?? BalancesSortBy.BALANCE;
+    const order = (queryDto.order ?? SortOrder.DESC).toUpperCase() as
+      | 'ASC'
+      | 'DESC';
+
+    const qb = this.dataSource
+      .getRepository(PortfolioInstitutionBalance)
+      .createQueryBuilder('pib')
+      .where('pib.portfolio_id = :portfolio_id', { portfolio_id });
+
+    qb.leftJoinAndSelect('pib.institution', 'i');
+    qb.leftJoinAndSelect('pib.currency_code', 'c');
+
+    if (institution_id) {
+      qb.andWhere('pib.institution_id = :institution_id', {
+        institution_id,
+      });
+    }
+
+    if (currency_code_id) {
+      qb.andWhere('pib.currency_code_id = :currency_code_id', {
+        currency_code_id,
+      });
+    }
+
+    switch (sortBy) {
+      case BalancesSortBy.UPDATED_AT:
+        qb.orderBy('pib.updated_at', order);
+        break;
+      case BalancesSortBy.INSTITUTION:
+        qb.orderBy('i.display_name', order).addOrderBy('pib.id', 'DESC');
+        break;
+      case BalancesSortBy.BALANCE:
+      default:
+        qb.orderBy('pib.balance', order);
+        break;
+    }
+
+    // 안정적 정렬(필요 시 공통 보조 정렬)
+    if (sortBy !== BalancesSortBy.INSTITUTION) {
+      qb.addOrderBy('pib.id', 'DESC');
+    }
+
+    return qb.getMany();
   }
 
   async getCashTransactions(
