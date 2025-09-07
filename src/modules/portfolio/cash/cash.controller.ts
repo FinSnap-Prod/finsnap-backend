@@ -35,9 +35,10 @@ import {
 import { DeleteCashTransactionResponseDto } from '../dto/responses/cash/delete-cash-transaction.dto';
 import { UpdateCashTransactionResponseDto } from '../dto/responses/cash/update-cash-transaction.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { User } from 'src/modules/auth/decorators/user.decorator';
 
 @ApiTags('cash')
-@Controller('/portfolios/:portfolioId')
+@Controller('/portfolios/:portfolio_id')
 export class CashController {
   constructor(private readonly cashService: CashService) {}
 
@@ -54,7 +55,7 @@ export class CashController {
   }
 
   // 예수금 상세 조회
-  @Get('institutions/:institutionId/cash/transactions')
+  @Get('institutions/:institution_id/cash/transactions')
   async getCashTransactions(
     @Param() getCashTransactionsParamDto: GetCashTransactionsParamDto,
     @Query() getCashTransactionsQueryDto: GetCashTransactionsQueryDto,
@@ -66,19 +67,21 @@ export class CashController {
   }
 
   // 예수금 내역 추가
-  @Post('institutions/:institutionId/cash/transactions')
+  @Post('institutions/:institution_id/cash/transactions')
   async createCashTransaction(
     @Param() createCashTransactionParamDto: CreateCashTransactionParamDto,
     @Body() createCashTransactionBodyDto: CreateCashTransactionBodyDto,
+    @User() user: any,
   ): Promise<CreateCashTransactionResponseDto> {
-    return this.cashService.createCashTransaction(
+    return await this.cashService.createCashTransaction(
       createCashTransactionParamDto,
       createCashTransactionBodyDto,
+      user.id,
     );
   }
 
   // 예수금 내역 삭제 (단건)
-  @Delete('institutions/:institutionId/cash/transactions/:transactionId')
+  @Delete('institutions/:institution_id/cash/transactions/:id')
   async deleteCashTransaction(
     @Param() deleteCashTransactionParamDto: DeleteCashTransactionParamDto,
   ): Promise<DeleteCashTransactionResponseDto> {
@@ -88,7 +91,7 @@ export class CashController {
   }
 
   // 예수금 내역 삭제 (그룹)
-  @Delete('institutions/:institutionId/cash/transactions')
+  @Delete('institutions/:institution_id/cash/transactions')
   async deleteCashTransactionGroup(
     @Query()
     deleteCashTransactionGroupQueryDto: DeleteCashTransactionQueryDto,
@@ -99,7 +102,7 @@ export class CashController {
   }
 
   // 예수금 내역 수정
-  @Put('institutions/:institutionId/cash/transactions/:transactionId')
+  @Put('institutions/:institution_id/cash/transactions/:id')
   async updateCashTransaction(
     @Param() updateCashTransactionParamDto: UpdateCashTransactionParamDto,
     @Body() updateCashTransactionBodyDto: UpdateCashTransactionBodyDto,
