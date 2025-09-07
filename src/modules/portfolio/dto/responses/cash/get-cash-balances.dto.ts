@@ -46,6 +46,13 @@ export class CashBalanceItem {
   balance: number;
 
   @ApiProperty({
+    description: '평균 매입 환율(기준통화/외화). 기준통화는 null',
+    example: 1300.123456,
+    required: false,
+  })
+  avg_rate?: number | null;
+
+  @ApiProperty({
     description: '수정 일시',
     example: '2021-01-01T00:00:00Z',
   })
