@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Asset } from 'src/database/entities/asset/asset.entity';
+import { Institution } from 'src/database/entities/code/institution.entity';
 import { Category } from 'src/database/entities/portfolio/category.entity';
 import { Portfolio } from 'src/database/entities/portfolio/portfolio.entity';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
@@ -56,6 +57,37 @@ export class PortfolioValidator {
         category,
         asset,
         userAsset,
+      };
+    });
+  }
+
+  async validatePortfolioAndFindUserAssetForCash(
+    portfolioId: number,
+    institutionId: number,
+    userId: string,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 포트폴리오 소유권 검증
+      const portfolio = await manager.findOne(Portfolio, {
+        where: { id: portfolioId, user_id: userId },
+      });
+
+      if (!portfolio) {
+        throw new Error('Portfolio not found');
+      }
+
+      // 2. 기관 소유권 검증
+      const institution = await manager.findOne(Institution, {
+        where: { id: institutionId },
+      });
+
+      if (!institution) {
+        throw new Error('Institution not found');
+      }
+
+      return {
+        portfolio,
+        institution,
       };
     });
   }

@@ -42,6 +42,12 @@ export class CashTransactionItem {
     example: 'EX-123',
   })
   exchange_group_id?: string | null;
+  @ApiProperty({
+    description: '환율 (exchange 시에만)',
+    example: 1300.123456,
+    required: false,
+  })
+  rate?: number;
 }
 
 export class CashBalanceItem {

@@ -96,7 +96,6 @@ export class CreateCashTransactionBodyDto {
   from_amount?: number;
 
   @ValidateIf((o) => o.type === CashCreateType.EXCHANGE)
-  @IsOptional()
   @IsNumber()
   @Min(0.000001)
   @ApiProperty({
@@ -106,7 +105,6 @@ export class CreateCashTransactionBodyDto {
   rate?: number;
 
   @ValidateIf((o) => o.type === CashCreateType.EXCHANGE)
-  @IsOptional()
   @IsNumber()
   @Min(0.01)
   @ApiProperty({

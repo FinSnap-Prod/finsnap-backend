@@ -12,7 +12,14 @@ import { Portfolio } from '../portfolio/portfolio.entity';
 import { Institution } from '../code/institution.entity';
 import { CurrencyCode } from '../code/currency-code.entity';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
-import { IsDate, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDate,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 @Entity('cash_transaction')
 @Index(['portfolio_id', 'institution_id', 'recorded_at'])
@@ -81,6 +88,14 @@ export class CashTransaction {
   @ManyToOne(() => CurrencyCode, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'currency_code_id' })
   currency_code: CurrencyCode;
+
+  @Column({ type: 'numeric', precision: 20, scale: 6, nullable: true })
+  @ApiProperty({
+    description: '환율',
+    example: 1.1,
+  })
+  @IsNumber()
+  rate: number;
 
   @Column({ type: 'timestamptz' })
   @ApiProperty({
