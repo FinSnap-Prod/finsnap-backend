@@ -57,6 +57,18 @@ export class CashTransactionItem {
   currency_code: string;
 
   @ApiProperty({
+    description: '통화 기호',
+    example: '₩',
+  })
+  symbol: string;
+
+  @ApiProperty({
+    description: '환율',
+    example: 1300.123456,
+  })
+  rate: number;
+
+  @ApiProperty({
     description: '기록 일시',
     example: '2021-01-01T00:00:00Z',
   })
@@ -80,7 +92,7 @@ export class CashTransactionsFilters {
     description: '타입',
     example: CashTransactionType.DEPOSIT,
   })
-  type?: CashTransactionType;
+  type?: CashTransactionType | 'exchange';
 
   @ApiProperty({
     description: '통화 코드 ID',

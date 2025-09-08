@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsEnum,
   IsInt,
   IsISO8601,
   IsOptional,
   Max,
   Min,
+  IsIn,
+  IsString,
 } from 'class-validator';
 import { CashTransactionType } from '../../enum/cash-transaction-type.enum';
 import { CashSortBy } from '../../enum/cash-sortby.enum';
@@ -31,12 +32,23 @@ export class GetCashTransactionsParamDto {
 
 export class GetCashTransactionsQueryDto {
   @IsOptional()
-  @IsEnum(CashTransactionType)
+  @IsString()
+  @IsIn([
+    'exchange',
+    CashTransactionType.DEPOSIT,
+    CashTransactionType.WITHDRAW,
+    CashTransactionType.FEE,
+    CashTransactionType.TAX,
+    CashTransactionType.DIVIDEND,
+    CashTransactionType.OTHER,
+    CashTransactionType.EXCHANGE_IN,
+    CashTransactionType.EXCHANGE_OUT,
+  ])
   @ApiProperty({
     description: '타입',
     example: CashTransactionType.DEPOSIT,
   })
-  type?: CashTransactionType;
+  type?: CashTransactionType | 'exchange';
 
   @IsOptional()
   @IsInt()
@@ -82,7 +94,7 @@ export class GetCashTransactionsQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsEnum(CashSortBy)
+  @IsIn([CashSortBy.RECORDED_AT, CashSortBy.AMOUNT])
   @ApiProperty({
     description: '정렬 기준',
     example: CashSortBy.RECORDED_AT,
@@ -90,7 +102,7 @@ export class GetCashTransactionsQueryDto {
   sortBy?: CashSortBy;
 
   @IsOptional()
-  @IsEnum(SortOrder)
+  @IsIn([SortOrder.ASC, SortOrder.DESC])
   @ApiProperty({
     description: '정렬 순서',
     example: SortOrder.ASC,
