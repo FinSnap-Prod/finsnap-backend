@@ -12,11 +12,7 @@ import { DeleteCashTransactionQueryDto } from '../dto/requests/cash/delete-cash-
 import { UpdateCashTransactionParamDto } from '../dto/requests/cash/update-cash-transaction.dto';
 import { UpdateCashTransactionBodyDto } from '../dto/requests/cash/update-cash-transaction.dto';
 import { GetCashBalancesResponseDto } from '../dto/responses/cash/get-cash-balances.dto';
-import {
-  GetCashTransactionsResponseDto,
-  CashTransactionItem,
-  PaginationMeta,
-} from '../dto/responses/cash/get-cash-transactions.dto';
+import { GetCashTransactionsResponseDto } from '../dto/responses/cash/get-cash-transactions.dto';
 import { CreateCashTransactionResponseDto } from '../dto/responses/cash/create-cash-transaction.dto';
 import { DeleteCashTransactionResponseDto } from '../dto/responses/cash/delete-cash-transaction.dto';
 import { UpdateCashTransactionResponseDto } from '../dto/responses/cash/update-cash-transaction.dto';
@@ -24,6 +20,7 @@ import { CashTransactionType } from '../dto/enum/cash-transaction-type.enum';
 import { PortfolioValidator } from '../lib/portfolio-validator';
 import { CashCreateType } from '../dto/enum/cash-create-type.enum';
 import { BalancesSortBy } from '../dto/enum/balances-sortby.enum';
+import { CashSortBy } from '../dto/enum/cash-sortby.enum';
 
 @Injectable()
 export class CashService {
@@ -32,7 +29,7 @@ export class CashService {
     private readonly portfolioValidator: PortfolioValidator,
   ) {}
 
-  // TODO 기관별 예수금 조회
+  // 기관별 예수금 조회
   async getCashBalances(
     paramDto: GetCashBalancesParamDto,
     queryDto: GetCashBalancesQueryDto,
@@ -97,46 +94,72 @@ export class CashService {
   async getCashTransactions(
     paramDto: GetCashTransactionsParamDto,
     queryDto: GetCashTransactionsQueryDto,
+    userId: string,
   ): Promise<GetCashTransactionsResponseDto> {
-    const items = await this.cashRepository.getCashTransactions(
-      paramDto,
-      queryDto,
-    );
-    const pagination: PaginationMeta = {
-      current_page: queryDto.page ?? 1,
-      limit: queryDto.limit ?? 20,
-      total_items: Array.isArray(items) ? items.length : 0,
-      total_pages: 1,
-    };
-    return {
-      success: true,
-      message: 'Cash transactions retrieved successfully.',
-      data: {
-        portfolio_id: paramDto.portfolio_id,
-        institution_id: paramDto.institution_id,
-        sorted_by: (queryDto?.sortBy as any) ?? 'recorded_at',
-        filters: {
-          type: queryDto?.type,
-          currency_code_id: queryDto?.currency_code_id,
-          from: queryDto?.from,
-          to: queryDto?.to,
+    try {
+      // 소유권 검증
+      const { portfolio, institution } =
+        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+          paramDto.portfolio_id,
+          paramDto.institution_id,
+          userId,
+        );
+
+      if (!portfolio || !institution) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio or institution not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 예수금 상세 조회
+      const result = await this.cashRepository.getCashTransactions(
+        paramDto,
+        queryDto,
+      );
+
+      // 반환
+      return {
+        success: true,
+        message: 'Cash transactions retrieved successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          sorted_by: queryDto?.sortBy ?? CashSortBy.RECORDED_AT,
+          filters: {
+            type: queryDto?.type ?? undefined,
+            currency_code_id: queryDto?.currency_code_id ?? undefined,
+            from: queryDto?.from ?? undefined,
+            to: queryDto?.to ?? undefined,
+          },
+          pagination: {
+            current_page: queryDto?.page ?? 1,
+            limit: queryDto?.limit ?? 20,
+            total_items: result.pagination,
+            total_pages: Math.ceil(result.pagination / (queryDto?.limit ?? 20)),
+          },
+          items: result.items.map((t) => ({
+            cash_transaction_id: t.id,
+            type: t.type as unknown as CashTransactionType,
+            amount: parseFloat(t.amount),
+            currency_code_id: t.currency_code_id,
+            currency_code: t.currency_code.currency_code,
+            symbol: t.currency_code?.symbol ?? '',
+            rate: (t as any).rate,
+            recorded_at: t.recorded_at.toISOString(),
+            memo: t.memo ?? null,
+            exchange_group_id: t.exchange_group_id ?? null,
+          })),
         },
-        pagination,
-        items: (items as any[]).map(
-          () =>
-            ({
-              cash_transaction_id: 0,
-              type: CashTransactionType.DEPOSIT,
-              amount: 0,
-              currency_code_id: 0,
-              currency_code: '',
-              recorded_at: new Date().toISOString(),
-              memo: null,
-              exchange_group_id: null,
-            }) as CashTransactionItem,
+      };
+    } catch (error) {
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to get cash transactions',
         ),
-      },
-    };
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   // 예수금 내역 추가
