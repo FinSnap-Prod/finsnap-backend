@@ -15,7 +15,8 @@ import {
 } from '../dto/requests/cash/create-cash-transaction.dto';
 import {
   DeleteCashTransactionParamDto,
-  DeleteCashTransactionQueryDto,
+  DeleteExchangeCashTransactionParamDto,
+  DeleteExchangeCashTransactionQueryDto,
 } from '../dto/requests/cash/delete-cash-transaction.dto';
 import {
   UpdateCashTransactionBodyDto,
@@ -539,15 +540,152 @@ export class CashRepository {
     });
   }
 
-  async deleteCashTransaction(
-    paramDto: DeleteCashTransactionParamDto,
-    queryDto: DeleteCashTransactionQueryDto,
-  ) {
-    return this.dataSource.getRepository(CashTransaction).find();
+  async deleteCashTransaction(paramDto: DeleteCashTransactionParamDto) {
+    const { portfolio_id, institution_id, id } = paramDto;
+
+    return this.dataSource.transaction(async (manager) => {
+      // 1. 삭제할 거래 내역 조회 및 검증
+      const tx = await manager.findOne(CashTransaction, {
+        where: { id, portfolio_id, institution_id },
+      });
+      if (!tx) throw new Error('Transaction not found');
+
+      // 환전 거래는 그룹 삭제로만 가능
+      if (tx.exchange_group_id) {
+        throw new Error('Exchange transaction requires group deletion');
+      }
+
+      const amt = Number(tx.amount);
+      const curId = tx.currency_code_id;
+
+      // 2. 잔액 테이블에 해당 통화 레코드가 없으면 생성 (잔액 0으로)
+      await manager.query(
+        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+         VALUES ($1,$2,$3,0)
+         ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+        [portfolio_id, institution_id, curId],
+      );
+
+      // 3. 거래 타입별 잔액 조정 로직
+      const INCREASE = new Set(['deposit', 'dividend', 'interest']); // 입금류: 삭제 시 잔액 감소
+      const DECREASE = new Set(['withdraw', 'fee', 'tax', 'other']); // 출금류: 삭제 시 잔액 증가
+
+      if (INCREASE.has(tx.type)) {
+        // 입금류 거래 삭제: 잔액에서 해당 금액 차감 (잔액 부족 시 에러)
+        const rows = await manager.query(
+          `UPDATE portfolio_institution_balance
+             SET balance = balance - $4, updated_at = NOW()
+           WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
+             AND balance >= $4
+           RETURNING balance, updated_at`,
+          [portfolio_id, institution_id, curId, amt],
+        );
+        if (!rows?.length) throw new Error('Insufficient balance');
+      } else if (DECREASE.has(tx.type)) {
+        // 출금류 거래 삭제: 잔액에 해당 금액 추가
+        await manager.query(
+          `UPDATE portfolio_institution_balance
+             SET balance = balance + $4, updated_at = NOW()
+           WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3`,
+          [portfolio_id, institution_id, curId, amt],
+        );
+      } else {
+        throw new Error('Unsupported type');
+      }
+
+      // 4. 거래 내역 삭제
+      await manager.delete(CashTransaction, { id });
+
+      // 5. 삭제 후 최종 잔액 조회하여 반환
+      const balance = await manager.findOne(PortfolioInstitutionBalance, {
+        where: { portfolio_id, institution_id, currency_code_id: curId },
+        relations: ['currency_code'],
+      });
+
+      return { balance };
+    });
   }
 
-  async deleteCashTransactionGroup(queryDto: DeleteCashTransactionQueryDto) {
-    return this.dataSource.getRepository(CashTransaction).find();
+  async deleteCashTransactionGroup(
+    paramDto: DeleteExchangeCashTransactionParamDto,
+    queryDto: DeleteExchangeCashTransactionQueryDto,
+  ) {
+    const { portfolio_id, institution_id } = paramDto;
+    const { exchange_group_id } = queryDto;
+
+    return this.dataSource.transaction(async (manager) => {
+      // 1) 그룹 내 거래 조회 (같은 포트폴리오/기관/그룹)
+      const txs = await manager.find(CashTransaction, {
+        where: { portfolio_id, institution_id, exchange_group_id },
+      });
+      if (!txs?.length) throw new Error('Transactions not found');
+
+      // 2) 관련 통화 balance row upsert
+      const currencyIds = Array.from(
+        new Set(txs.map((t) => t.currency_code_id)),
+      );
+      for (const curId of currencyIds) {
+        await manager.query(
+          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+           VALUES ($1,$2,$3,0)
+           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+          [portfolio_id, institution_id, curId],
+        );
+      }
+
+      // 3) 잔액 되돌림
+      // - exchange_out 삭제: balance += amount
+      // - exchange_in 삭제: balance -= amount (AND balance >= amount)
+      for (const tx of txs) {
+        const amt = Number(tx.amount);
+        if (tx.type === 'exchange_out') {
+          await manager.query(
+            `UPDATE portfolio_institution_balance
+             SET balance = balance + $4, updated_at = NOW()
+             WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3`,
+            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          );
+        } else if (tx.type === 'exchange_in') {
+          const rows = await manager.query(
+            `UPDATE portfolio_institution_balance
+             SET balance = balance - $4, updated_at = NOW()
+             WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
+               AND balance >= $4
+             RETURNING balance, updated_at`,
+            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          );
+          if (!rows?.length) throw new Error('Insufficient balance');
+        }
+      }
+
+      // 4) 거래 삭제 (그룹 기준)
+      await manager.delete(CashTransaction, { exchange_group_id });
+
+      // 5) 삭제 후 잔액 조회(각 통화)
+      const balances_after = [] as {
+        currency_code_id: number;
+        currency_code?: string;
+        balance: number;
+        updated_at: string;
+      }[];
+      for (const curId of currencyIds) {
+        const b = await manager.findOne(PortfolioInstitutionBalance, {
+          where: { portfolio_id, institution_id, currency_code_id: curId },
+          relations: ['currency_code'],
+        });
+        balances_after.push({
+          currency_code_id: curId,
+          currency_code: b?.currency_code?.currency_code ?? '',
+          balance: Number(b?.balance ?? 0),
+          updated_at: new Date(b?.updated_at ?? Date.now()).toISOString(),
+        });
+      }
+
+      return {
+        deleted_transaction_ids: txs.map((t) => t.id),
+        balances_after,
+      };
+    });
   }
 
   async updateCashTransaction(

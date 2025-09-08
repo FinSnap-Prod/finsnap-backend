@@ -7,8 +7,11 @@ import { GetCashTransactionsParamDto } from '../dto/requests/cash/get-cash-trans
 import { GetCashTransactionsQueryDto } from '../dto/requests/cash/get-cash-transactions.dto';
 import { CreateCashTransactionParamDto } from '../dto/requests/cash/create-cash-transaction.dto';
 import { CreateCashTransactionBodyDto } from '../dto/requests/cash/create-cash-transaction.dto';
-import { DeleteCashTransactionParamDto } from '../dto/requests/cash/delete-cash-transaction.dto';
-import { DeleteCashTransactionQueryDto } from '../dto/requests/cash/delete-cash-transaction.dto';
+import {
+  DeleteCashTransactionParamDto,
+  DeleteExchangeCashTransactionParamDto,
+} from '../dto/requests/cash/delete-cash-transaction.dto';
+import { DeleteExchangeCashTransactionQueryDto } from '../dto/requests/cash/delete-cash-transaction.dto';
 import { UpdateCashTransactionParamDto } from '../dto/requests/cash/update-cash-transaction.dto';
 import { UpdateCashTransactionBodyDto } from '../dto/requests/cash/update-cash-transaction.dto';
 import { GetCashBalancesResponseDto } from '../dto/responses/cash/get-cash-balances.dto';
@@ -90,7 +93,7 @@ export class CashService {
     }
   }
 
-  // TODO 예수금 상세 조회
+  // 예수금 상세 조회
   async getCashTransactions(
     paramDto: GetCashTransactionsParamDto,
     queryDto: GetCashTransactionsQueryDto,
@@ -282,44 +285,168 @@ export class CashService {
     }
   }
 
-  // TODO 예수금 내역 삭제 (단건)
+  // 예수금 내역 삭제 (단건)
   async deleteCashTransaction(
     paramDto: DeleteCashTransactionParamDto,
+    userId: string,
   ): Promise<DeleteCashTransactionResponseDto> {
-    await this.cashRepository.deleteCashTransaction(paramDto, {} as any);
-    return {
-      success: true,
-      message: 'Cash transaction deleted successfully.',
-      data: {
-        portfolio_id: paramDto.portfolio_id,
-        institution_id: paramDto.institution_id,
-        deleted_transaction_id: paramDto.id!,
-        balance_after: {
-          currency_code_id: 0,
-          currency_code: '',
-          balance: 0,
-          updated_at: new Date().toISOString(),
+    try {
+      // 소유권 검증
+      const { portfolio, institution, cashTransaction } =
+        await this.portfolioValidator.validatePortfolioForCashTransaction(
+          paramDto.portfolio_id,
+          paramDto.institution_id,
+          paramDto.id,
+          userId,
+        );
+
+      if (!portfolio || !institution || !cashTransaction) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound(
+            'Portfolio or institution or cash transaction not found',
+          ),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (
+        cashTransaction.type === CashTransactionType.EXCHANGE_IN ||
+        cashTransaction.type === CashTransactionType.EXCHANGE_OUT
+      ) {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Cannot delete exchange transaction'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const res = await this.cashRepository.deleteCashTransaction(paramDto);
+
+      if (!res.balance) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Balance not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return {
+        success: true,
+        message: 'Cash transaction deleted successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          deleted_transaction_id: paramDto.id!,
+          balance_after: {
+            currency_code_id: res.balance.currency_code_id,
+            currency_code: res.balance.currency_code.currency_code,
+            balance: Number(res.balance.balance),
+            updated_at: res.balance.updated_at.toISOString(),
+          },
         },
-      },
-    };
+      };
+    } catch (error) {
+      const msg = (error as any)?.message || '';
+      if (msg === 'Transaction not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Transaction not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (msg === 'Insufficient balance') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Insufficient balance for deletion'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Exchange transaction requires group deletion') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(
+            'Exchange leg deletion not allowed; use exchange_group_id',
+          ),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to delete cash transaction',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
-  // TODO 예수금 내역 삭제 (그룹)
+  // 예수금 내역 삭제 (그룹)
   async deleteCashTransactionGroup(
-    queryDto: DeleteCashTransactionQueryDto,
+    paramDto: DeleteExchangeCashTransactionParamDto,
+    queryDto: DeleteExchangeCashTransactionQueryDto,
+    userId: string,
   ): Promise<DeleteCashTransactionResponseDto> {
-    await this.cashRepository.deleteCashTransactionGroup(queryDto);
-    return {
-      success: true,
-      message: 'Exchange cash transactions deleted successfully.',
-      data: {
-        portfolio_id: 0,
-        institution_id: 0,
-        exchange_group_id: queryDto.exchange_group_id!,
-        deleted_transaction_ids: [],
-        balances_after: [],
-      },
-    } as any;
+    try {
+      // 소유권 검증
+      const { portfolio, institution } =
+        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+          paramDto.portfolio_id,
+          paramDto.institution_id,
+          userId,
+        );
+
+      if (!portfolio || !institution) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio or institution not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 예수금 내역 삭제
+      const res = await this.cashRepository.deleteCashTransactionGroup(
+        paramDto,
+        queryDto,
+      );
+
+      return {
+        success: true,
+        message: 'Cash transaction group deleted successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          exchange_group_id: queryDto.exchange_group_id!,
+          deleted_transaction_ids: res.deleted_transaction_ids,
+          balances_after: res.balances_after.map((b) => ({
+            currency_code_id: b.currency_code_id,
+            currency_code: b.currency_code ?? '',
+            balance: Number(b.balance),
+            updated_at: b.updated_at ?? new Date().toISOString(),
+          })),
+        },
+      };
+    } catch (error) {
+      const msg = (error as any)?.message || '';
+      if (msg === 'Transaction not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Transaction not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (msg === 'Insufficient balance') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Insufficient balance for deletion'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Exchange transaction requires group deletion') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(
+            'Exchange leg deletion not allowed; use exchange_group_id',
+          ),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to delete cash transaction',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   // TODO 예수금 내역 수정
