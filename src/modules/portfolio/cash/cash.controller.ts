@@ -35,9 +35,15 @@ import {
 import {
   UpdateCashTransactionBodyDto,
   UpdateCashTransactionParamDto,
+  UpdateExchangeCashTransactionBodyDto,
+  UpdateExchangeCashTransactionParamDto,
+  UpdateExchangeCashTransactionQueryDto,
 } from '../dto/requests/cash/update-cash-transaction.dto';
 import { DeleteCashTransactionResponseDto } from '../dto/responses/cash/delete-cash-transaction.dto';
-import { UpdateCashTransactionResponseDto } from '../dto/responses/cash/update-cash-transaction.dto';
+import {
+  UpdateCashTransactionGroupResponseDto,
+  UpdateCashTransactionResponseDto,
+} from '../dto/responses/cash/update-cash-transaction.dto';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('cash')
@@ -124,15 +130,36 @@ export class CashController {
     );
   }
 
-  // TODO 예수금 내역 수정
+  // 예수금 내역 수정 (단건)
   @Put('institutions/:institution_id/cash/transactions/:id')
   async updateCashTransaction(
     @Param() updateCashTransactionParamDto: UpdateCashTransactionParamDto,
     @Body() updateCashTransactionBodyDto: UpdateCashTransactionBodyDto,
+    @User() user: any,
   ): Promise<UpdateCashTransactionResponseDto> {
     return this.cashService.updateCashTransaction(
       updateCashTransactionParamDto,
       updateCashTransactionBodyDto,
+      user.id,
+    );
+  }
+
+  // 예수금 내역 수정 (환전)
+  @Put('institutions/:institution_id/cash/transactions')
+  async updateCashTransactionGroup(
+    @Param()
+    updateCashTransactionParamDto: UpdateExchangeCashTransactionParamDto,
+    @Body()
+    updateCashTransactionBodyDto: UpdateExchangeCashTransactionBodyDto,
+    @Query()
+    updateCashTransactionQueryDto: UpdateExchangeCashTransactionQueryDto,
+    @User() user: any,
+  ): Promise<UpdateCashTransactionGroupResponseDto> {
+    return this.cashService.updateCashTransactionGroup(
+      updateCashTransactionParamDto,
+      updateCashTransactionBodyDto,
+      updateCashTransactionQueryDto,
+      user.id,
     );
   }
 }
