@@ -21,6 +21,9 @@ import {
 import {
   UpdateCashTransactionBodyDto,
   UpdateCashTransactionParamDto,
+  UpdateExchangeCashTransactionBodyDto,
+  UpdateExchangeCashTransactionParamDto,
+  UpdateExchangeCashTransactionQueryDto,
 } from '../dto/requests/cash/update-cash-transaction.dto';
 import { CurrencyCode } from 'src/database/entities/code/currency-code.entity';
 import { PortfolioInstitutionBalance } from 'src/database/entities/account/portfolio-institution-balance.entity';
@@ -692,6 +695,439 @@ export class CashRepository {
     paramDto: UpdateCashTransactionParamDto,
     bodyDto: UpdateCashTransactionBodyDto,
   ) {
-    return this.dataSource.getRepository(CashTransaction).find();
+    const { portfolio_id, institution_id, id } = paramDto;
+
+    return this.dataSource.transaction(async (manager) => {
+      // 0) 기존 거래 조회
+      const tx = await manager.findOne(CashTransaction, {
+        where: { id, portfolio_id, institution_id },
+      });
+      if (!tx) throw new Error('Transaction not found');
+      if (tx.exchange_group_id) {
+        throw new Error('Exchange transaction requires group update');
+      }
+
+      // 1) 새 값 확정
+      const oldType = tx.type;
+      const oldAmt = Number(tx.amount);
+      const oldCur = tx.currency_code_id;
+
+      const newType = bodyDto.type ?? oldType;
+      const newAmt = Number(bodyDto.amount ?? oldAmt);
+      const newCur = Number(bodyDto.currency_code_id ?? oldCur);
+      const newRecordedAt = bodyDto.recorded_at
+        ? new Date(bodyDto.recorded_at)
+        : tx.recorded_at;
+      const newMemo = bodyDto.memo ?? tx.memo;
+
+      if (!(newAmt > 0)) throw new Error('Invalid payload');
+
+      const INCREASE = new Set(['deposit', 'dividend', 'interest']);
+      const DECREASE = new Set(['withdraw', 'fee', 'tax', 'other']);
+
+      if (!INCREASE.has(newType) && !DECREASE.has(newType)) {
+        throw new Error('Unsupported type');
+      }
+
+      // 2) 잔고 row 보장(기존/신규 통화 모두)
+      await manager.query(
+        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+       VALUES ($1,$2,$3,0)
+       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+        [portfolio_id, institution_id, oldCur],
+      );
+      await manager.query(
+        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+       VALUES ($1,$2,$3,0)
+       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+        [portfolio_id, institution_id, newCur],
+      );
+
+      // 3) 기존 효과 롤백
+      if (INCREASE.has(oldType)) {
+        const rows = await manager.query(
+          `UPDATE portfolio_institution_balance
+           SET balance = balance - $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           AND balance >= $4
+         RETURNING id`,
+          [portfolio_id, institution_id, oldCur, oldAmt],
+        );
+        if (!rows?.length) throw new Error('Insufficient balance');
+      } else if (DECREASE.has(oldType)) {
+        await manager.query(
+          `UPDATE portfolio_institution_balance
+           SET balance = balance + $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+          [portfolio_id, institution_id, oldCur, oldAmt],
+        );
+      } else {
+        throw new Error('Unsupported type');
+      }
+
+      // 4) 새로운 효과 적용
+      if (INCREASE.has(newType)) {
+        await manager.query(
+          `UPDATE portfolio_institution_balance
+       SET balance = balance + $4, updated_at = NOW()
+     WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+          [portfolio_id, institution_id, newCur, newAmt],
+        );
+      } else if (DECREASE.has(newType)) {
+        const rows = await manager.query(
+          `UPDATE portfolio_institution_balance
+       SET balance = balance - $4, updated_at = NOW()
+     WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+       AND balance >= $4
+     RETURNING id`,
+          [portfolio_id, institution_id, newCur, newAmt],
+        );
+        if (!rows?.length) throw new Error('Insufficient balance');
+      }
+
+      // 5) 거래내역 업데이트
+      await manager.update(
+        CashTransaction,
+        { id },
+        {
+          type: newType,
+          amount: newAmt.toFixed(2),
+          currency_code_id: newCur,
+          recorded_at: newRecordedAt,
+          memo: newMemo ?? undefined,
+        },
+      );
+
+      // 6) 수정 후 최종 잔액 조회하여 반환
+      const balance = await manager.findOne(PortfolioInstitutionBalance, {
+        where: { portfolio_id, institution_id, currency_code_id: newCur },
+        relations: ['currency_code'],
+      });
+
+      return {
+        updated: {
+          id,
+          type: newType,
+          amount: newAmt,
+          currency_code_id: newCur,
+          currency_code: balance?.currency_code?.currency_code ?? '',
+          recorded_at: newRecordedAt.toISOString(),
+          memo: newMemo ?? undefined,
+        },
+        balance_after: {
+          currency_code_id: newCur,
+          currency_code: balance?.currency_code?.currency_code ?? '',
+          balance: Number(balance?.balance ?? 0),
+          updated_at: new Date(balance?.updated_at ?? Date.now()).toISOString(),
+        },
+      };
+    });
+  }
+
+  async updateCashTransactionGroup(
+    paramDto: UpdateExchangeCashTransactionParamDto,
+    bodyDto: UpdateExchangeCashTransactionBodyDto,
+    queryDto: UpdateExchangeCashTransactionQueryDto,
+  ) {
+    const { portfolio_id, institution_id } = paramDto;
+    const { exchange_group_id } = queryDto;
+
+    return this.dataSource.transaction(async (manager) => {
+      if (!exchange_group_id) {
+        throw new Error('Invalid payload');
+      }
+
+      // 1) 기존 그룹 조회 + 무결성 검사(반드시 in/out 2건)
+      const existing = await manager.find(CashTransaction, {
+        where: { portfolio_id, institution_id, exchange_group_id },
+      });
+      if (!existing?.length) throw new Error('Transactions not found');
+      const hasOut = existing.some((t) => t.type === 'exchange_out');
+      const hasIn = existing.some((t) => t.type === 'exchange_in');
+      if (!(hasOut && hasIn) || existing.length !== 2) {
+        throw new Error('Inconsistent exchange group state');
+      }
+
+      // 2) 관련 통화 잔고 row 보장 (기존 그룹 통화들)
+      const prevCurrencyIds = Array.from(
+        new Set(existing.map((t) => t.currency_code_id)),
+      );
+      for (const curId of prevCurrencyIds) {
+        await manager.query(
+          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+           VALUES ($1,$2,$3,0)
+           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+          [portfolio_id, institution_id, curId],
+        );
+      }
+
+      // 3) 기존 효과 되돌리기
+      for (const tx of existing) {
+        const amt = Number(tx.amount);
+        if (tx.type === 'exchange_out') {
+          // out 삭제 → 잔고 가산
+          await manager.query(
+            `UPDATE portfolio_institution_balance
+             SET balance = balance + $4, updated_at = NOW()
+             WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          );
+        } else if (tx.type === 'exchange_in') {
+          // in 삭제 → 잔고 감산(가드)
+          const rows = await manager.query(
+            `UPDATE portfolio_institution_balance
+             SET balance = balance - $4, updated_at = NOW()
+             WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+               AND balance >= $4
+             RETURNING id`,
+            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          );
+          if (!rows?.length) throw new Error('Insufficient balance');
+        }
+      }
+
+      // 4) 기존 거래 삭제
+      await manager.delete(CashTransaction, { exchange_group_id });
+
+      // 5) 입력 검증 및 to_amount 계산
+      const {
+        from_currency_id,
+        to_currency_id,
+        from_amount,
+        rate,
+        to_amount,
+        recorded_at,
+        memo,
+      } = bodyDto;
+
+      if (
+        !from_currency_id ||
+        !to_currency_id ||
+        !from_amount ||
+        (!rate && !to_amount)
+      ) {
+        throw new Error('Invalid payload');
+      }
+      if (from_currency_id === to_currency_id) {
+        throw new Error('Invalid exchange pair');
+      }
+
+      const BASE_CURRENCY_ID = 1; // 기준통화(KRW)
+      const fromAmt = Number(from_amount);
+      const rateVal = rate ? Number(rate) : undefined;
+      let toAmt = to_amount ? Number(to_amount) : undefined;
+      if (!(fromAmt > 0)) throw new Error('Invalid exchange amounts');
+      if (rateVal !== undefined && !(rateVal > 0))
+        throw new Error('Invalid exchange amounts');
+      if (toAmt !== undefined && !(toAmt > 0))
+        throw new Error('Invalid exchange amounts');
+
+      // 계산/검증: 기준↔외화만 허용
+      if (
+        !(
+          (from_currency_id === BASE_CURRENCY_ID &&
+            to_currency_id !== BASE_CURRENCY_ID) ||
+          (from_currency_id !== BASE_CURRENCY_ID &&
+            to_currency_id === BASE_CURRENCY_ID)
+        )
+      ) {
+        throw new Error('Only base↔foreign exchanges supported');
+      }
+
+      if (toAmt === undefined && rateVal !== undefined) {
+        // 계산
+        if (
+          from_currency_id === BASE_CURRENCY_ID &&
+          to_currency_id !== BASE_CURRENCY_ID
+        ) {
+          toAmt = Math.round((fromAmt / rateVal) * 100) / 100;
+        } else {
+          toAmt = Math.round(fromAmt * rateVal * 100) / 100;
+        }
+      }
+
+      if (rateVal !== undefined && toAmt !== undefined) {
+        const expected =
+          from_currency_id === BASE_CURRENCY_ID
+            ? Math.round((fromAmt / rateVal) * 100) / 100
+            : Math.round(fromAmt * rateVal * 100) / 100;
+        if (Math.abs(expected - toAmt) > 0.01) {
+          throw new Error('Exchange amounts do not match rate');
+        }
+      }
+
+      // 타입 확정
+      const newOut = {
+        currency_id: from_currency_id,
+        amount: fromAmt,
+      };
+      const newIn = {
+        currency_id: to_currency_id,
+        amount: toAmt as number,
+      };
+
+      // 6) 잔고 row 보장 (새 통화들)
+      const newCurrencyIds = Array.from(
+        new Set([from_currency_id, to_currency_id]),
+      );
+      for (const curId of newCurrencyIds) {
+        await manager.query(
+          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+           VALUES ($1,$2,$3,0)
+           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+          [portfolio_id, institution_id, curId],
+        );
+      }
+
+      // 7) 평균환율 갱신을 위해 대상 외화 row 선조회(락)
+      let prevQty = 0;
+      let prevAvg = 0;
+      if (
+        from_currency_id === BASE_CURRENCY_ID &&
+        to_currency_id !== BASE_CURRENCY_ID
+      ) {
+        const rows = await manager.query(
+          `SELECT balance, avg_rate FROM portfolio_institution_balance
+           WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           FOR UPDATE`,
+          [portfolio_id, institution_id, to_currency_id],
+        );
+        prevQty = Number(rows?.[0]?.balance ?? 0);
+        prevAvg = Number(rows?.[0]?.avg_rate ?? 0);
+      }
+
+      // 8) 사전 잔고 확인(from 통화)
+      const fromBal = await manager.query(
+        `SELECT balance FROM portfolio_institution_balance
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+         FOR UPDATE`,
+        [portfolio_id, institution_id, newOut.currency_id],
+      );
+      if (Number(fromBal?.[0]?.balance ?? 0) < (newOut.amount as number)) {
+        throw new Error('Insufficient balance');
+      }
+
+      // 9) 새 효과 적용: from 감소(가드) + to 증가
+      const decRows = await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance - $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           AND balance >= $4
+         RETURNING balance, updated_at`,
+        [portfolio_id, institution_id, newOut.currency_id, newOut.amount],
+      );
+      if (!decRows?.length) throw new Error('Insufficient balance');
+
+      await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance + $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+         `,
+        [portfolio_id, institution_id, newIn.currency_id, newIn.amount],
+      );
+
+      // 10) 평균환율 갱신
+      if (
+        from_currency_id === BASE_CURRENCY_ID &&
+        to_currency_id !== BASE_CURRENCY_ID &&
+        rateVal !== undefined
+      ) {
+        const newQty = prevQty + (newIn.amount as number);
+        const newAvg =
+          newQty > 0
+            ? (prevQty * prevAvg + (newIn.amount as number) * rateVal) / newQty
+            : 0;
+        await manager.query(
+          `UPDATE portfolio_institution_balance
+           SET avg_rate = $4
+           WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+          [portfolio_id, institution_id, to_currency_id, newAvg],
+        );
+      }
+      if (
+        from_currency_id !== BASE_CURRENCY_ID &&
+        to_currency_id === BASE_CURRENCY_ID
+      ) {
+        // 외화→기준 환전: 외화 qty 감소 후 0이면 avg_rate NULL로 리셋
+        const rows = await manager.query(
+          `SELECT balance FROM portfolio_institution_balance
+           WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           FOR UPDATE`,
+          [portfolio_id, institution_id, from_currency_id],
+        );
+        const curQty = Number(rows?.[0]?.balance ?? 0);
+        if (curQty === 0) {
+          await manager.query(
+            `UPDATE portfolio_institution_balance
+             SET avg_rate = NULL
+             WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+            [portfolio_id, institution_id, from_currency_id],
+          );
+        }
+      }
+
+      // 11) 거래 2건 재삽입 (같은 exchange_group_id 재사용)
+      const outRes = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(CashTransaction)
+        .values({
+          portfolio_id,
+          institution_id,
+          type: 'exchange_out',
+          amount: (newOut.amount as number).toFixed(2),
+          currency_code_id: newOut.currency_id,
+          recorded_at: new Date(recorded_at),
+          memo: memo ?? undefined,
+          rate: rateVal ?? undefined,
+          exchange_group_id,
+        })
+        .returning(['id'])
+        .execute();
+
+      const inRes = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(CashTransaction)
+        .values({
+          portfolio_id,
+          institution_id,
+          type: 'exchange_in',
+          amount: (newIn.amount as number).toFixed(2),
+          currency_code_id: newIn.currency_id,
+          recorded_at: new Date(recorded_at),
+          memo: memo ?? undefined,
+          rate: rateVal ?? undefined,
+          exchange_group_id,
+        })
+        .returning(['id'])
+        .execute();
+
+      // 12) balance_after(관례상 to_currency에 대한 잔고 반환)
+      const toBalance = await manager.findOne(PortfolioInstitutionBalance, {
+        where: {
+          portfolio_id,
+          institution_id,
+          currency_code_id: to_currency_id,
+        },
+        relations: ['currency_code'],
+      });
+
+      return {
+        exchange_group_id,
+        updated_transaction_ids: [
+          outRes.identifiers[0]?.id,
+          inRes.identifiers[0]?.id,
+        ].filter(Boolean),
+        balance_after: {
+          currency_code_id: to_currency_id,
+          currency_code: toBalance?.currency_code?.currency_code ?? '',
+          balance: Number(toBalance?.balance ?? 0),
+          updated_at: new Date(
+            toBalance?.updated_at ?? Date.now(),
+          ).toISOString(),
+        },
+      };
+    });
   }
 }

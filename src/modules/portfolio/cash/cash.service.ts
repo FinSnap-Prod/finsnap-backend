@@ -12,13 +12,21 @@ import {
   DeleteExchangeCashTransactionParamDto,
 } from '../dto/requests/cash/delete-cash-transaction.dto';
 import { DeleteExchangeCashTransactionQueryDto } from '../dto/requests/cash/delete-cash-transaction.dto';
-import { UpdateCashTransactionParamDto } from '../dto/requests/cash/update-cash-transaction.dto';
+import {
+  UpdateCashTransactionParamDto,
+  UpdateExchangeCashTransactionBodyDto,
+  UpdateExchangeCashTransactionParamDto,
+  UpdateExchangeCashTransactionQueryDto,
+} from '../dto/requests/cash/update-cash-transaction.dto';
 import { UpdateCashTransactionBodyDto } from '../dto/requests/cash/update-cash-transaction.dto';
 import { GetCashBalancesResponseDto } from '../dto/responses/cash/get-cash-balances.dto';
 import { GetCashTransactionsResponseDto } from '../dto/responses/cash/get-cash-transactions.dto';
 import { CreateCashTransactionResponseDto } from '../dto/responses/cash/create-cash-transaction.dto';
 import { DeleteCashTransactionResponseDto } from '../dto/responses/cash/delete-cash-transaction.dto';
-import { UpdateCashTransactionResponseDto } from '../dto/responses/cash/update-cash-transaction.dto';
+import {
+  UpdateCashTransactionGroupResponseDto,
+  UpdateCashTransactionResponseDto,
+} from '../dto/responses/cash/update-cash-transaction.dto';
 import { CashTransactionType } from '../dto/enum/cash-transaction-type.enum';
 import { PortfolioValidator } from '../lib/portfolio-validator';
 import { CashCreateType } from '../dto/enum/cash-create-type.enum';
@@ -285,7 +293,7 @@ export class CashService {
     }
   }
 
-  // 예수금 내역 삭제 (단건)
+  // 예수금 내역 삭제
   async deleteCashTransaction(
     paramDto: DeleteCashTransactionParamDto,
     userId: string,
@@ -374,7 +382,7 @@ export class CashService {
     }
   }
 
-  // 예수금 내역 삭제 (그룹)
+  // 예수금 내역 삭제 (환전)
   async deleteCashTransactionGroup(
     paramDto: DeleteExchangeCashTransactionParamDto,
     queryDto: DeleteExchangeCashTransactionQueryDto,
@@ -449,35 +457,186 @@ export class CashService {
     }
   }
 
-  // TODO 예수금 내역 수정
+  // 예수금 내역 수정
   async updateCashTransaction(
     paramDto: UpdateCashTransactionParamDto,
     bodyDto: UpdateCashTransactionBodyDto,
+    userId: string,
   ): Promise<UpdateCashTransactionResponseDto> {
-    await this.cashRepository.updateCashTransaction(paramDto, bodyDto);
-    return {
-      success: true,
-      message: 'Cash transaction updated successfully.',
-      data: {
-        portfolio_id: paramDto.portfolio_id,
-        institution_id: paramDto.institution_id,
-        transaction: {
-          cash_transaction_id: paramDto.id,
-          type: CashTransactionType.DEPOSIT,
-          amount: 0,
-          currency_code_id: 0,
-          currency_code: '',
-          recorded_at: new Date().toISOString(),
-          memo: bodyDto.memo ?? null,
-          exchange_group_id: null,
+    try {
+      // 소유권 검증
+      const { portfolio, institution } =
+        await this.portfolioValidator.validatePortfolioForCashTransaction(
+          paramDto.portfolio_id,
+          paramDto.institution_id,
+          paramDto.id,
+          userId,
+        );
+
+      if (!portfolio || !institution) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio or institution not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 예수금 내역 수정
+      const res = await this.cashRepository.updateCashTransaction(
+        paramDto,
+        bodyDto,
+      );
+
+      return {
+        success: true,
+        message: 'Cash transaction updated successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          transaction: {
+            cash_transaction_id: res.updated.id,
+            type: res.updated.type as unknown as CashTransactionType,
+            amount: res.updated.amount,
+            currency_code_id: res.updated.currency_code_id,
+            currency_code: res.updated.currency_code ?? '',
+            recorded_at: res.updated.recorded_at,
+            memo: res.updated.memo ?? null,
+          },
+          balance_after: {
+            currency_code_id: res.balance_after.currency_code_id,
+            currency_code: res.balance_after.currency_code ?? '',
+            balance: res.balance_after.balance,
+            updated_at: res.balance_after.updated_at,
+          },
         },
-        balance_after: {
-          currency_code_id: 0,
-          currency_code: '',
-          balance: 0,
-          updated_at: new Date().toISOString(),
+      };
+    } catch (error) {
+      const msg = (error as any)?.message || '';
+      if (msg === 'Transaction not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Transaction not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (msg === 'Cannot update exchange transaction') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Cannot update exchange transaction'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Insufficient balance') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Insufficient balance for update'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Unsupported type' || msg === 'Invalid payload') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(msg),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to update cash transaction',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // 예수금 내역 수정 (환전)
+  async updateCashTransactionGroup(
+    paramDto: UpdateExchangeCashTransactionParamDto,
+    bodyDto: UpdateExchangeCashTransactionBodyDto,
+    queryDto: UpdateExchangeCashTransactionQueryDto,
+    userId: string,
+  ): Promise<UpdateCashTransactionGroupResponseDto> {
+    try {
+      // 소유권 검증
+      const { portfolio, institution } =
+        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+          paramDto.portfolio_id,
+          paramDto.institution_id,
+          userId,
+        );
+
+      if (!portfolio || !institution) {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio or institution not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // 예수금 내역 수정
+      const res = await this.cashRepository.updateCashTransactionGroup(
+        paramDto,
+        bodyDto,
+        queryDto,
+      );
+      return {
+        success: true,
+        message: 'Exchange cash transaction updated successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          exchange_group_id: res.exchange_group_id,
+          updated_transaction_ids: res.updated_transaction_ids,
+          balance_after: {
+            currency_code_id: res.balance_after.currency_code_id,
+            currency_code: res.balance_after.currency_code ?? '',
+            balance: Number(res.balance_after.balance),
+            updated_at:
+              res.balance_after.updated_at ?? new Date().toISOString(),
+          },
         },
-      },
-    };
+      };
+    } catch (error) {
+      const msg = (error as any)?.message || '';
+      if (msg === 'Transaction not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Transaction not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (msg === 'Transactions not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Transactions not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (msg === 'Insufficient balance') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Insufficient balance for update'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Unsupported type' || msg === 'Invalid payload') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(msg),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (msg === 'Inconsistent exchange group state') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(msg),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (
+        msg === 'Only base↔foreign exchanges supported' ||
+        msg === 'Exchange amounts do not match rate'
+      ) {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest(msg),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw new HttpException(
+        ErrorResponseUtil.internalServerError(
+          'Failed to update cash transaction',
+        ),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
