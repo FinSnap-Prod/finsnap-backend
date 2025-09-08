@@ -25,6 +25,7 @@ import { CurrencyCode } from 'src/database/entities/code/currency-code.entity';
 import { PortfolioInstitutionBalance } from 'src/database/entities/account/portfolio-institution-balance.entity';
 import { BalancesSortBy } from '../dto/enum/balances-sortby.enum';
 import { SortOrder } from '../dto/enum/sort-order.enum';
+import { CashSortBy } from '../dto/enum/cash-sortby.enum';
 
 @Injectable()
 export class CashRepository {
@@ -87,7 +88,91 @@ export class CashRepository {
     paramDto: GetCashTransactionsParamDto,
     queryDto: GetCashTransactionsQueryDto,
   ) {
-    return this.dataSource.getRepository(CashTransaction).find();
+    const { portfolio_id, institution_id } = paramDto;
+
+    const pageNumber = Math.max(1, Number(queryDto.page) || 1);
+    const limitNumber = Math.min(100, Number(queryDto.limit) || 20);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const sortBy = queryDto.sortBy ?? CashSortBy.RECORDED_AT;
+    const order = (queryDto.order ?? SortOrder.DESC).toUpperCase() as
+      | 'ASC'
+      | 'DESC';
+
+    const qb = this.dataSource
+      .getRepository(CashTransaction)
+      .createQueryBuilder('ct')
+      .leftJoinAndSelect('ct.institution', 'i')
+      .leftJoinAndSelect('ct.currency_code', 'c')
+      .where('ct.portfolio_id = :portfolio_id', { portfolio_id });
+
+    this.applyTxFilters(qb, {
+      institution_id,
+      currency_code_id: queryDto.currency_code_id,
+      from: queryDto.from,
+      to: queryDto.to,
+      type: queryDto.type,
+    });
+
+    const sortColumn =
+      sortBy === CashSortBy.AMOUNT ? 'ct.amount' : 'ct.recorded_at';
+
+    qb.orderBy(sortColumn, order).addOrderBy('ct.id', 'DESC');
+
+    // 페이지네이션 적용
+    qb.skip(skip).take(limitNumber);
+
+    // 총 거래내역 수 조회, clone(): 원본 쿼리빌더 복제 , orderBy(): 정렬 조건 제거, skip(undefined).take(undefined): 페이지네이션 제거,
+    const countQb = qb.clone().orderBy().skip(undefined).take(undefined);
+
+    // 거래내역 조회, getMany(): 페이지네이션 적용, getCount(): 총 거래내역 수 조회
+    const [transactions, totalCount] = await Promise.all([
+      qb.getMany(),
+      countQb.getCount(),
+    ]);
+
+    return {
+      items: transactions,
+      pagination: totalCount,
+    };
+  }
+
+  // 내부 헬퍼: 필터 공통 적용
+  private applyTxFilters(
+    qb: import('typeorm').SelectQueryBuilder<CashTransaction>,
+    opts: {
+      institution_id?: number;
+      currency_code_id?: number;
+      from?: string;
+      to?: string;
+      type?: string;
+    },
+  ) {
+    const { institution_id, currency_code_id, from, to, type } = opts;
+
+    if (institution_id) {
+      qb.andWhere('ct.institution_id = :institution_id', { institution_id });
+    }
+    if (currency_code_id) {
+      qb.andWhere('ct.currency_code_id = :currency_code_id', {
+        currency_code_id,
+      });
+    }
+    if (from) {
+      qb.andWhere('ct.recorded_at >= :from', { from: new Date(from) });
+    }
+    if (to) {
+      qb.andWhere('ct.recorded_at <= :to', { to: new Date(to) });
+    }
+    if (type) {
+      if (type === 'exchange') {
+        qb.andWhere('ct.type IN (:...exTypes)', {
+          exTypes: ['exchange_out', 'exchange_in'],
+        });
+      } else {
+        qb.andWhere('ct.type = :type', { type });
+      }
+    }
   }
 
   async createCashTransaction(

@@ -44,7 +44,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class CashController {
   constructor(private readonly cashService: CashService) {}
 
-  // TODO 기관별 예수금 조회
+  // 기관별 예수금 조회
   @Get('/cash/balances')
   async getCashBalances(
     @Param() getCashBalancesParamDto: GetCashBalancesParamDto,
@@ -71,10 +71,12 @@ export class CashController {
   async getCashTransactions(
     @Param() getCashTransactionsParamDto: GetCashTransactionsParamDto,
     @Query() getCashTransactionsQueryDto: GetCashTransactionsQueryDto,
+    @User() user: any,
   ): Promise<GetCashTransactionsResponseDto> {
     return this.cashService.getCashTransactions(
       getCashTransactionsParamDto,
       getCashTransactionsQueryDto,
+      user.id,
     );
   }
 
