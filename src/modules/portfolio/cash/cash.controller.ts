@@ -29,7 +29,8 @@ import {
 import { CreateCashTransactionResponseDto } from '../dto/responses/cash/create-cash-transaction.dto';
 import {
   DeleteCashTransactionParamDto,
-  DeleteCashTransactionQueryDto,
+  DeleteExchangeCashTransactionParamDto,
+  DeleteExchangeCashTransactionQueryDto,
 } from '../dto/requests/cash/delete-cash-transaction.dto';
 import {
   UpdateCashTransactionBodyDto,
@@ -66,7 +67,7 @@ export class CashController {
     );
   }
 
-  // TODO 예수금 상세 조회
+  // 예수금 상세 조회
   @Get('institutions/:institution_id/cash/transactions')
   async getCashTransactions(
     @Param() getCashTransactionsParamDto: GetCashTransactionsParamDto,
@@ -94,24 +95,32 @@ export class CashController {
     );
   }
 
-  // TODO 예수금 내역 삭제 (단건)
+  // 예수금 내역 삭제 (단건)
   @Delete('institutions/:institution_id/cash/transactions/:id')
   async deleteCashTransaction(
-    @Param() deleteCashTransactionParamDto: DeleteCashTransactionParamDto,
+    @Param()
+    deleteCashTransactionParamDto: DeleteCashTransactionParamDto,
+    @User() user: any,
   ): Promise<DeleteCashTransactionResponseDto> {
     return this.cashService.deleteCashTransaction(
       deleteCashTransactionParamDto,
+      user.id,
     );
   }
 
-  // TODO예수금 내역 삭제 (그룹)
+  // 예수금 내역 삭제 (환전)
   @Delete('institutions/:institution_id/cash/transactions')
   async deleteCashTransactionGroup(
+    @Param()
+    deleteExchangeCashTransactionParamDto: DeleteExchangeCashTransactionParamDto,
     @Query()
-    deleteCashTransactionGroupQueryDto: DeleteCashTransactionQueryDto,
+    deleteExchangeCashTransactionQueryDto: DeleteExchangeCashTransactionQueryDto,
+    @User() user: any,
   ): Promise<DeleteCashTransactionResponseDto> {
     return this.cashService.deleteCashTransactionGroup(
-      deleteCashTransactionGroupQueryDto,
+      deleteExchangeCashTransactionParamDto,
+      deleteExchangeCashTransactionQueryDto,
+      user.id,
     );
   }
 
