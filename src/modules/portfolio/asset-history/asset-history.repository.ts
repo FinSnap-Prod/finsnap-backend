@@ -10,6 +10,7 @@ import { AssetHistory } from 'src/database/entities/portfolio/asset-history.enti
 import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
 import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
 import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
+import { CashTransaction } from 'src/database/entities/account/cash-transaction.entity';
 
 @Injectable()
 export class AssetHistoryRepository {
@@ -257,7 +258,35 @@ export class AssetHistoryRepository {
         );
       }
 
-      // 4. 필요한 모든 데이터를 포함하여 반환
+      // 4. 현금 자동 연동(T8): 매수/매도 시 예수금 업데이트 및 연동 거래 생성
+      if (asset_history_type_id === 1 || asset_history_type_id === 2) {
+        const ua = await transactionManager.findOne(UserAsset, {
+          where: { id: userAssetId },
+          relations: ['category'],
+        });
+        if (!ua) throw new Error('UserAsset not found');
+
+        const portfolioId = ua.category.portfolio_id;
+        const institutionId = ua.institution_id;
+        const currencyId = ua.currency_code_id;
+        const tradeType = asset_history_type_id === 1 ? 'buy' : 'sell';
+        const amount = Number(assetHistory.total_amount);
+
+        await this.ensureBalanceRow(transactionManager, portfolioId, institutionId, currencyId);
+        await this.applyCashDeltaAndInsertTrade(transactionManager, {
+          portfolio_id: portfolioId,
+          institution_id: institutionId,
+          currency_code_id: currencyId,
+          effectType: tradeType,
+          amount,
+          recorded_at: assetHistory.recorded_at,
+          memo: assetHistory.memo ?? undefined,
+          asset_history_id: assetHistory.id,
+          user_asset_id: userAssetId,
+        });
+      }
+
+      // 5. 필요한 모든 데이터를 포함하여 반환
       const responseData = {
         asset_id: userAsset.asset_id,
         category_id: userAsset.category_id,
@@ -504,6 +533,45 @@ export class AssetHistoryRepository {
         memo: newMemo ?? undefined,
       });
 
+      // 4-1) 현금 자동 연동(T8)
+      const linked = await manager.findOne(CashTransaction, {
+        where: { asset_history_id: existing.id },
+      });
+
+      const prevPortfolioId = userAsset.category.portfolio_id;
+      const prevInstitutionId = userAsset.institution_id;
+      const prevCurrencyId = userAsset.currency_code_id;
+      await this.ensureBalanceRow(manager, prevPortfolioId, prevInstitutionId, prevCurrencyId);
+
+      const nextPortfolioId = userAsset.category.portfolio_id; // 포트폴리오 이동 미지원 가정
+      const nextInstitutionId = institution_id ?? userAsset.institution_id;
+      const nextCurrencyId = currency_code_id ?? userAsset.currency_code_id;
+      await this.ensureBalanceRow(manager, nextPortfolioId, nextInstitutionId, nextCurrencyId);
+
+      // 기존 효과 롤백
+      if (linked) {
+        await this.rollbackCashForLinkedTx(manager, linked);
+      }
+
+      // 새 효과 적용 또는 연동 삭제
+      if (newTypeId === 1 || newTypeId === 2) {
+        const effectType = newTypeId === 1 ? 'buy' : 'sell';
+        await this.applyCashDeltaAndUpsertLinkedTrade(manager, {
+          cash_tx_id: linked?.id,
+          portfolio_id: nextPortfolioId,
+          institution_id: nextInstitutionId,
+          currency_code_id: nextCurrencyId,
+          effectType,
+          amount: Number(updatedTotal),
+          recorded_at: new Date(newRecordedAt),
+          memo: newMemo ?? undefined,
+          asset_history_id: existing.id,
+          user_asset_id: userAsset.id,
+        });
+      } else if (linked) {
+        await manager.delete(CashTransaction, { id: linked.id });
+      }
+
       // 5) 응답 구성에 필요한 이름/타입 문자열 준비
       // 자산 이름 조회
       let assetName = '';
@@ -616,6 +684,208 @@ export class AssetHistoryRepository {
       return await executeInTransaction(manager); // 기존 트랜잭션 사용
     } else {
       return this.dataSource.transaction(executeInTransaction); // 새 트랜잭션 생성
+    }
+  }
+
+  // === T8 Helpers: Cash integration ===
+  /**
+   * (포트폴리오, 기관, 통화) 조합의 잔고 행이 존재하도록 보장
+   * - 없으면 balance=0으로 `portfolio_institution_balance` 행을 생성
+   * - UNIQUE 제약 + ON CONFLICT DO NOTHING으로 멱등 보장
+   */
+  private async ensureBalanceRow(
+    manager: any,
+    portfolio_id: number,
+    institution_id: number,
+    currency_code_id: number,
+  ) {
+    await manager.query(
+      `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
+       VALUES ($1,$2,$3,0)
+       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
+      [portfolio_id, institution_id, currency_code_id],
+    );
+  }
+
+  /**
+   * 매수/매도에 따른 예수금 증감 적용 후 연동 cash_transaction 삽입
+   * - buy: balance -= amount (잔액 가드: balance >= amount)
+   * - sell: balance += amount
+   * - cash_transaction에 asset_history_id/user_asset_id로 연동
+   * - 호출한 트랜잭션 manager 내에서 실행
+   */
+  private async applyCashDeltaAndInsertTrade(
+    manager: any,
+    args: {
+      portfolio_id: number;
+      institution_id: number;
+      currency_code_id: number;
+      effectType: 'buy' | 'sell';
+      amount: number;
+      recorded_at: Date;
+      memo?: string;
+      asset_history_id: number;
+      user_asset_id: number;
+    },
+  ) {
+    const {
+      portfolio_id,
+      institution_id,
+      currency_code_id,
+      effectType,
+      amount,
+      recorded_at,
+      memo,
+      asset_history_id,
+      user_asset_id,
+    } = args;
+
+    if (effectType === 'buy') {
+      const rows = await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance - $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           AND balance >= $4
+         RETURNING id`,
+        [portfolio_id, institution_id, currency_code_id, amount],
+      );
+      if (!rows?.length) throw new Error('Insufficient balance');
+    } else {
+      await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance + $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+        [portfolio_id, institution_id, currency_code_id, amount],
+      );
+    }
+
+    await manager
+      .createQueryBuilder()
+      .insert()
+      .into(CashTransaction)
+      .values({
+        portfolio_id,
+        institution_id,
+        type: effectType,
+        amount: amount.toFixed(2),
+        currency_code_id,
+        recorded_at,
+        memo: memo ?? undefined,
+        asset_history_id,
+        user_asset_id,
+      })
+      .execute();
+  }
+
+  /**
+   * 기존 연동 cash_transaction의 현금 효과만 롤백
+   * - buy: 잔고 += amount (복구)
+   * - sell: 잔고 -= amount (잔액 가드: balance >= amount)
+   * - 잔고만 되돌리고 거래 레코드는 삭제하지 않음
+   */
+  private async rollbackCashForLinkedTx(manager: any, tx: CashTransaction) {
+    const amt = Number(tx.amount);
+    if (tx.type === 'buy') {
+      await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance + $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+        [tx.portfolio_id, tx.institution_id, tx.currency_code_id, amt],
+      );
+    } else if (tx.type === 'sell') {
+      const rows = await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance - $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           AND balance >= $4
+         RETURNING id`,
+        [tx.portfolio_id, tx.institution_id, tx.currency_code_id, amt],
+      );
+      if (!rows?.length) throw new Error('Insufficient balance');
+    }
+  }
+
+  /**
+   * 매수/매도에 따른 예수금 증감 적용 후 연동 cash_transaction upsert
+   * - cash_tx_id가 있으면 해당 거래를 update, 없으면 insert
+   * - 항상 잔고를 먼저 조정(필요 시 잔액 가드 적용)
+   */
+  private async applyCashDeltaAndUpsertLinkedTrade(
+    manager: any,
+    args: {
+      cash_tx_id?: number;
+      portfolio_id: number;
+      institution_id: number;
+      currency_code_id: number;
+      effectType: 'buy' | 'sell';
+      amount: number;
+      recorded_at: Date;
+      memo?: string;
+      asset_history_id: number;
+      user_asset_id: number;
+    },
+  ) {
+    const {
+      cash_tx_id,
+      portfolio_id,
+      institution_id,
+      currency_code_id,
+      effectType,
+      amount,
+      recorded_at,
+      memo,
+      asset_history_id,
+      user_asset_id,
+    } = args;
+
+    if (effectType === 'buy') {
+      const rows = await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance - $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+           AND balance >= $4
+         RETURNING id`,
+        [portfolio_id, institution_id, currency_code_id, amount],
+      );
+      if (!rows?.length) throw new Error('Insufficient balance');
+    } else {
+      await manager.query(
+        `UPDATE portfolio_institution_balance
+         SET balance = balance + $4, updated_at = NOW()
+         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+        [portfolio_id, institution_id, currency_code_id, amount],
+      );
+    }
+
+    if (cash_tx_id) {
+      await manager.update(CashTransaction, cash_tx_id, {
+        portfolio_id,
+        institution_id,
+        type: effectType,
+        amount: amount.toFixed(2),
+        currency_code_id,
+        recorded_at,
+        memo: memo ?? undefined,
+        asset_history_id,
+        user_asset_id,
+      });
+    } else {
+      await manager
+        .createQueryBuilder()
+        .insert()
+        .into(CashTransaction)
+        .values({
+          portfolio_id,
+          institution_id,
+          type: effectType,
+          amount: amount.toFixed(2),
+          currency_code_id,
+          recorded_at,
+          memo: memo ?? undefined,
+          asset_history_id,
+          user_asset_id,
+        })
+        .execute();
     }
   }
 }

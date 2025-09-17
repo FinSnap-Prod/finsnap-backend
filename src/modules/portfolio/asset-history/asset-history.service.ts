@@ -10,6 +10,7 @@ import { PortfolioValidator } from '../lib/portfolio-validator';
 import { DataSource } from 'typeorm';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
 import { AssetHistory } from 'src/database/entities/portfolio/asset-history.entity';
+import { CashTransaction } from 'src/database/entities/account/cash-transaction.entity';
 
 @Injectable()
 export class AssetHistoryService {
@@ -204,6 +205,45 @@ export class AssetHistoryService {
           manager,
         );
 
+        // 3-1. 현금 자동 연동(T8): 연동된 예수금 거래 롤백 및 삭제
+        const linked = await manager.findOne(CashTransaction, {
+          where: { asset_history_id: historyId },
+        });
+        if (linked) {
+          const amt = Number(linked.amount);
+          if (linked.type === 'buy') {
+            await manager.query(
+              `UPDATE portfolio_institution_balance
+               SET balance = balance + $4, updated_at = NOW()
+               WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
+              [
+                linked.portfolio_id,
+                linked.institution_id,
+                linked.currency_code_id,
+                amt,
+              ],
+            );
+          } else if (linked.type === 'sell') {
+            const rows = await manager.query(
+              `UPDATE portfolio_institution_balance
+               SET balance = balance - $4, updated_at = NOW()
+               WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
+                 AND balance >= $4
+               RETURNING id`,
+              [
+                linked.portfolio_id,
+                linked.institution_id,
+                linked.currency_code_id,
+                amt,
+              ],
+            );
+            if (!rows?.length) {
+              throw new Error('Insufficient balance');
+            }
+          }
+          await manager.delete(CashTransaction, { id: linked.id });
+        }
+
         // 4. 수량 업데이트 로직
         await this.assetHistoryRepository.updateUserAssetQuantityForDelete(
           assetHistory.user_asset_id, // userAssetId
@@ -290,9 +330,8 @@ export class AssetHistoryService {
         );
 
       // 2) 거래내역 존재 여부 확인 및 소유권 검증
-      const existing = await this.assetHistoryRepository.getAssetHistory(
-        historyId,
-      );
+      const existing =
+        await this.assetHistoryRepository.getAssetHistory(historyId);
       if (!existing) {
         throw new HttpException(
           ErrorResponseUtil.notFound('Asset history not found'),

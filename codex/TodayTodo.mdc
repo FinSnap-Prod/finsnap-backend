@@ -1,0 +1,147 @@
+# Today Todo — 2025-09-05
+
+## 우선순위 및 진행 순서
+
+- 1단계: 거래 이벤트 기반 자동 계산 파이프라인 구축
+- 2단계: 카테고리 평가자산 조회 API
+- 3단계: 포트폴리오 요약정보 조회 API
+
+## 에픽/태스크 구조(체크리스트)
+
+### 1. 거래 이벤트 기반 자동 계산
+
+- [ ] 1.1 도메인 정의: 거래 타입/원장/코스트베이시스(평균법 기본, FIFO 옵션) 확정
+- [ ] 1.2 이벤트 발행: Transaction CRUD → DomainEvent(Outbox 포함) 설계/스키마
+- [ ] 1.3 계산 엔진: AssetHistory, UserAsset, Portfolio 증분 집계 서비스 골격
+- [ ] 1.4 수정/삭제 회귀 처리: 이전 거래 롤백 → 신규 거래 재적용 로직
+- [ ] 1.5 일관성: Outbox + 워커(BullMQ) 또는 동기/최종일관성 정책 확정/구현
+- [ ] 1.6 스키마/인덱스: 필요한 컬럼/인덱스/제약 추가(마이그레이션)
+- [ ] 1.7 리플레이 유틸: 과거 거래 재계산 CLI(seed/seeder 연계)
+- [ ] 1.8 테스트: 유닛/통합(수수료/배당/환전 포함), 성능 리플레이
+      // NOTE: 코드 변경은 별도 PR에서 수행
+- [ ] 1.9 임시 UserAsset 수량 업데이트 함수 제거 및 포지션 집계 서비스(증분/리플레이) 대체 설계/적용 계획 수립
+
+### 2. 카테고리 평가자산 조회 API
+
+- [ ] 2.1 DTO/스펙 합의: 요청/응답 필드, 정렬/필터/페이지네이션
+- [ ] 2.2 리포지토리 쿼리: 포트폴리오×카테고리 범위 집계 쿼리
+- [ ] 2.3 정렬/필터: symbol/value/pnlPct, 검색/최소평가액
+- [ ] 2.4 최적화: 인덱스/캐싱(단기 TTL) 검토
+- [ ] 2.5 테스트: e2e(빈 카테고리/비활성 자산 경계)
+
+### 3. 포트폴리오 요약정보 조회 API
+
+- [ ] 3.1 DTO/스펙 합의: KPI/차트 타임시리즈 정의(range, at)
+- [ ] 3.2 요약계산: 총자산/현금/투입/미실현/실현손익/수익률/일변동
+- [ ] 3.3 타임시리즈: 평가액/입출금/손익 기여도(contribution)
+- [ ] 3.4 캐싱 전략: 메모리/Redis 단기 TTL
+- [ ] 3.5 테스트: e2e + 대용량/다포트폴리오 사용자
+
+## 먼저 확정할 것(빠른 의사결정 체크리스트)
+
+- [x] 거래 타입 범위: 매수/매도/입금/출금/환전 사용(결정). 배당/수수료/이자 등은 후속 확장.
+- [ ] 코스트베이시스: 이동평균법(기본 제안) vs FIFO 중 선택 필요. 설명 드린 후 확정 예정.
+- [x] 가격 기준: 각 거래에 가격·수량 기록으로 포지션/실현손익 계산(v1). 시세 연동(미실현)은 후속.
+- [x] 카테고리 체계: 한 카테고리 내 동일 자산 1개만 보유(결정). 카테고리 간 중복 보유 가능. Unique(category_id, asset_id) 필요.
+- [ ] 일관성 수준: 제안(v1) 동기 집계(요청 트랜잭션 내 반영), (v2) Outbox 기반 최종 일관성. 선택 필요.
+
+## 스키마/인덱스 초안(요약)
+
+- UserAsset: quantity, avg_cost, current_price, current_value, unrealized_pnl, unrealized_pnl_pct, updated_at
+- Portfolio: total_value, cash, invested, unrealized_pnl, realized_pnl, daily_pnl, daily_return, updated_at
+- AssetHistory: asset_id, portfolio_id, ts, quantity, price, value, unrealized_pnl
+- 인덱스: (portfolio_id), (portfolio_id, category_id), (asset_id, portfolio_id, ts DESC)
+- 제약: user_asset 테이블에 Unique(category_id, asset_id) 제안(카테고리 내 중복 금지 규칙 반영)
+
+## API 스펙 초안
+
+- GET `/portfolios/:portfolioId/categories/:categoryId/assets`
+  - Query: at, page, limit, sort(value|pnlPct|symbol), dir(asc|desc), minValue, search
+  - Response
+    - summary: count, totalValue, totalUnrealizedPnl, allocationPct
+    - items[]: assetId, symbol, name, quantity, avgCost, price, currentValue, unrealizedPnl, unrealizedPnlPct, allocationPct
+- GET `/portfolios/:portfolioId/summary`
+  - Query: range(1D|1W|1M|3M|1Y|ALL), at(optional)
+  - Response
+    - kpis: totalValue, cash, invested, unrealizedPnl, realizedPnl, returnPct, dayChange, dayReturnPct
+    - allocationByCategory[]: categoryId, name, value, pct
+    - topMovers[]: assetId, symbol, pnlAbs, pnlPct
+    - timeseries[]: { ts, totalValue, contribution: { inflow, outflow, pnl } }
+
+## 오늘의 실행 계획(핵심 산출물 목표)
+
+- [ ] 의사결정 확정(체크리스트) 및 기록(30분)
+- [ ] Nest 모듈/레이어 스캐폴딩: events, aggregations, api(컨트롤러/서비스/리포지토리) 골격
+- [ ] Outbox 엔티티/마이그레이션 + 발행 헬퍼 + 워커(BullMQ) 스텁
+- [ ] 평균법 코스트베이시스 계산기 인터페이스/기본 구현 + 유닛테스트
+- [ ] 거래 리플레이 CLI(seed) 스텁 + 샘플 데이터
+
+## Working Now — 1.9 포지션 집계 설계(문서/체크리스트, 코드 변경 없음)
+
+- [ ] 규칙 명세: buy/sell 수량/평단 처리, 수정/삭제 시 롤백 후 재적용 규칙 정리
+- [ ] 제약 설계: user_asset Unique(category_id, asset_id) 필요성 검토(현 스키마 영향 분석 포함)
+- [ ] 인터페이스 초안: PositionCalculator(average|FIFO 전략 주입), applyCreate/Update/Delete 시그니처 정의
+- [ ] 테스트 케이스 목록화: 음수 수량 방지, 전량매도 후 평단 0 리셋, 타입변경(매수↔매도) 등
+- [ ] 마이그레이션 계획서 초안: Unique 추가, 필요 인덱스 영향/롤백 플랜
+- [ ] DOD 업데이트: 시나리오 문서화 + 샘플 데이터로 수작업 검증 절차 정의
+
+## Definition of Done(1단계 초기 PR)
+
+- 거래 생성/수정/삭제 → Outbox 기록 및 워커에 의해 UserAsset/Portfolio 업데이트
+- 최소 1개 종목/여러 거래 시나리오에서 증분 계산 검증(e2e)
+- 리플레이 실행 시 UserAsset/Portfolio/AssetHistory 일관성 유지
+- 카테고리/요약 API 컨트롤러는 스켈레톤(200 응답, TODO 주석)까지 포함
+
+## 참고/후속
+
+- Task Master 등록 후 자동 태스크화 가능(명령 예시)
+  - task-master add-task --prompt="거래 이벤트 기반 자동 계산 파이프라인 구축"
+  - task-master add-task --prompt="카테고리 평가자산 조회 API 구현"
+  - task-master add-task --prompt="포트폴리오 요약정보 조회 API 구현"
+
+---
+
+## Epic — 예수금(현금) 관리 MVP
+
+### 개요
+- 포트폴리오×기관×통화 단위 예수금 관리(잔고/이력/환전), 기존 매수·매도와 연동.
+
+### 태스크(순서/의존성)
+- [ ] T0 설계 확정/정합성 체크(엔드포인트/DTO/정밀도/정책)
+- [ ] T1 DB 마이그레이션: balances/transactions 스키마
+- [ ] T2 Cash 도메인 레이어(서비스/리포지토리)
+- [x] T3 API(POST): 예수금 내역 생성(일반/환전) — 구현됨
+- [x] T4 API(GET): 기관별 예수금 조회 — 구현됨
+ - [x] T5 API(GET): 예수금 상세 이력 조회 — 구현됨
+ - [x] T6 API(DELETE): 예수금 내역 삭제(단건/환전 그룹) — 구현됨
+ - [x] T7 API(PUT): 예수금 내역 수정(일반/환전) — 구현됨
+- [ ] T8 Integration: 매수/매도와 예수금 자동 연동 — Next
+- [ ] T9 테스트 패키지(유닛/통합/e2e)
+- [ ] T10 문서/운영(Swagger/배포체크리스트)
+
+### T1 상세 — DB 마이그레이션(현 단계)
+- 스키마 추가
+  - [ ] portfolio_institution_balance
+    - 컬럼: id, portfolio_id, institution_id, currency_code_id, balance(numeric(20,2) default 0), created_at, updated_at
+    - 제약: UNIQUE(portfolio_id, institution_id, currency_code_id)
+    - 인덱스: (portfolio_id, institution_id), (portfolio_id, currency_code_id)
+  - [ ] cash_transaction
+    - 컬럼: id, portfolio_id, institution_id, type(varchar), amount(numeric(20,2) > 0), currency_code_id, recorded_at, memo?, exchange_group_id?, asset_history_id?, user_asset_id?, created_at, updated_at
+    - 체크: amount > 0, type in [deposit, withdraw, fee, tax, dividend, other, exchange_out, exchange_in]
+    - 인덱스: (portfolio_id, institution_id, recorded_at DESC), (exchange_group_id), (portfolio_id, institution_id, type)
+- 마이그레이션 산출물
+  - [ ] TypeORM migration 생성 파일 1~2개(up/down 포함)
+  - [ ] enum 사용 시 문자열 컬럼로 처리(이식성) 또는 DB enum 정의(선택)
+  - [ ] FK: portfolios/institution/currency_code 참조(ON DELETE RESTRICT 권장)
+- 롤백/검증
+  - [ ] down 스크립트에서 인덱스/제약/테이블 제거 역순 처리
+  - [ ] 로컬에서 migration:run / revert 검증
+- 시드/초기화(선택)
+  - [ ] 기존 사용자 조합(p,i,c) 별 balance=0 초기행 생성 스크립트(필요 시)
+- 명명 규칙
+  - [ ] 테이블: portfolio_institution_balance, cash_transaction
+  - [ ] 인덱스/제약: pk_*/fk_*/uq_*/idx_* 접두 사용
+- DoD(T1)
+  - [ ] 마이그레이션 up/down 정상 동작 및 로컬 검증 완료
+  - [ ] 스키마/제약/인덱스가 API 요구(정렬/필터/페이징)를 충족
+  - [ ] 간단한 샘플 데이터로 쿼리 성능/정합성 확인

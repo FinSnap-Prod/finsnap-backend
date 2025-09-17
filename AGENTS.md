@@ -1,5 +1,46 @@
 # Task Master AI - Agent Integration Guide
+# Repository Guidelines
 
+## Project Structure & Modules
+- Source: `src/` organized by Nest modules (e.g., `modules/`, `common/`, `config/`).
+- Persistence: TypeORM entities under `src/database/entities/**` (`*.entity.ts`).
+- Seeders: `src/database/seeder/**` with runnable scripts (see commands).
+- Tests: unit specs alongside code as `*.spec.ts`; e2e tests in `test/` as `*.e2e-spec.ts`.
+- Build output: `dist/` (generated). Configuration in `tsconfig*.json`, `nest-cli.json`.
+
+## Build, Test, and Development
+- `npm run start:dev`: Run API with watch mode.
+- `npm run build`: Compile TypeScript to `dist/`.
+- `npm run start:prod`: Run compiled app from `dist/main.js`.
+- `npm test` | `npm run test:watch`: Run Jest unit tests.
+- `npm run test:e2e`: Run e2e tests (see `test/jest-e2e.json`).
+- `npm run test:cov`: Coverage report to `coverage/`.
+- Seed data examples:
+  - `npm run all-seeders`
+  - `npm run domestic-master`, `npm run overseas-master`, `npm run seed:exchange`
+
+## Coding Style & Naming
+- Language: TypeScript (ES2023). Use decorators and DI per Nest patterns.
+- Lint/format: `npm run lint` (ESLint) and `npm run format` (Prettier). Prettier uses single quotes and trailing commas.
+- Filenames: `*.module.ts`, `*.controller.ts`, `*.service.ts`, `*.repository.ts`, `*.entity.ts`.
+- DTOs: place under `dto/` with `requests/` and `responses/` subfolders.
+- Paths: prefer `import ... from 'src/...';` via tsconfig paths.
+
+## Testing Guidelines
+- Framework: Jest with `ts-jest`.
+- Unit tests: `*.spec.ts` colocated with source under `src/`.
+- E2E tests: `test/*.e2e-spec.ts`.
+- Aim for meaningful coverage; run `npm run test:cov` locally before PRs.
+
+## Commit & Pull Request Guidelines
+- Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `chore:`, etc.
+- Reference issue/feature IDs when relevant (e.g., `feat: add deposit update API (feat#75)`).
+- Before opening a PR: ensure `npm run lint`, `npm test`, and seeder builds pass.
+- PR description: scope, technical notes, DB changes/migrations, and screenshots or example API responses when UI/API behavior changes.
+
+## Security & Configuration
+- Configure environment in `.env` (not committed): `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `DB_LOGGING`.
+- TypeORM config reads from `.env` (`src/config/typeorm.config.ts`). Ensure DB is reachable before `start:dev`.
 ## Essential Commands
 
 ### Core Workflow Commands
