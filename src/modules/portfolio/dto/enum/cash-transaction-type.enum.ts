@@ -1,4 +1,6 @@
 export enum CashTransactionType {
+  BUY = 'buy',
+  SELL = 'sell',
   DEPOSIT = 'deposit',
   WITHDRAW = 'withdraw',
   FEE = 'fee',

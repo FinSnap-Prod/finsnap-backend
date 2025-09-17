@@ -35,6 +35,8 @@ export class GetCashTransactionsQueryDto {
   @IsString()
   @IsIn([
     'exchange',
+    CashTransactionType.BUY,
+    CashTransactionType.SELL,
     CashTransactionType.DEPOSIT,
     CashTransactionType.WITHDRAW,
     CashTransactionType.FEE,
