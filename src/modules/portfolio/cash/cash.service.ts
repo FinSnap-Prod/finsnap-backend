@@ -365,6 +365,12 @@ export class CashService {
           HttpStatus.BAD_REQUEST,
         );
       }
+      if (msg === 'Linked asset transaction cannot be deleted') {
+        throw new HttpException(
+          ErrorResponseUtil.badRequest('Cannot delete cash transaction linked to an asset history'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
       if (msg === 'Exchange transaction requires group deletion') {
         throw new HttpException(
           ErrorResponseUtil.badRequest(

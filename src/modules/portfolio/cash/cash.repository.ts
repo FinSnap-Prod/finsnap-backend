@@ -558,6 +558,11 @@ export class CashRepository {
         throw new Error('Exchange transaction requires group deletion');
       }
 
+      // 자산내역 연동 거래는 삭제 불가 (T8 Guard)
+      if (tx.asset_history_id) {
+        throw new Error('Linked asset transaction cannot be deleted');
+      }
+
       const amt = Number(tx.amount);
       const curId = tx.currency_code_id;
 
