@@ -26,7 +26,7 @@ export * from './responses/category/delete-category.dto';
 export * from './responses/portfolio/delete-portfolio.dto';
 
 export * from './responses/asset-history/get-asset-history.dto';
-export * from './responses/category/get-categories-summary.dto';
+export * from './responses/category/get-categories-summary.dto';    
 export * from './responses/portfolio/get-portfolios.dto';
 export * from './responses/portfolio/get-portfolio-summary.dto';
 

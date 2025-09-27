@@ -1,84 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-
-export class AssetItem {
-  @ApiProperty({ description: '자산 ID', example: 1 })
-  asset_id: number;
-
-  @ApiProperty({ description: '자산 이름', example: '자산 1' })
-  asset_name: string;
-
-  @ApiProperty({ description: '카테고리 ID', example: 1 })
-  category_id: number;
-
-  @ApiProperty({ description: '카테고리 이름', example: '카테고리 1' })
-  category_name: string;
-
-  @ApiProperty({ description: '현재 가격', example: 10000 })
-  current_price: number;
-
-  @ApiProperty({ description: '평균 가격', example: 10000 })
-  avg_price: number;
-
-  @ApiProperty({ description: '수량', example: 100 })
-  quantity: number;
-
-  @ApiProperty({ description: '매수 금액', example: 1000000 })
-  purchase_amount: number;
-
-  @ApiProperty({ description: '평가 금액', example: 1000000 })
-  eval_amount: number;
-
-  @ApiProperty({ description: '수익/손실', example: 100000 })
-  profit_amount: number;
-
-  @ApiProperty({ description: '수익률', example: 0.1 })
-  profit_rate: number;
+export class GetCategoriesSummaryResponseDto {
+  success: boolean;
+  message: string;
+  data: GetPortfolioData;
 }
 
-export class CategoryItem {
-  @ApiProperty({ description: '카테고리 ID', example: 1 })
-  category_id: number;
-
-  @ApiProperty({ description: '카테고리 이름', example: '카테고리 1' })
-  category_name: string;
-}
-
-export class PortfolioAssetData {
-  @ApiProperty({ description: '포트폴리오 ID', example: 1 })
-  portfolio_id: number;
-
-  @ApiProperty({ description: '포트폴리오 이름', example: '포트폴리오 1' })
-  portfolio_name: string;
-
-  @ApiProperty({ description: '생성일', example: '2021-01-01' })
-  created_at: string;
-
-  @ApiProperty({ description: '수정일', example: '2021-01-01' })
-  updated_at: string;
-
-  @ApiProperty({ description: '정렬 기준', example: 'eval_amount' })
-  sorted_by: string;
-
-  @ApiProperty({ description: '카테고리 목록', type: [CategoryItem] })
+export class GetPortfolioData {
+  portfolio: GetPortfolioInfo;
+  fx: Record<string, number>;
   categories: CategoryItem[];
-
-  @ApiProperty({ description: '자산 목록', type: [AssetItem] })
   assets: AssetItem[];
 }
 
-export class GetCategoriesSummaryResponseDto {
-  @ApiProperty({ description: '응답 성공 여부', example: true })
-  success: boolean;
+export class GetPortfolioInfo {
+  portfolio_id: number;
+  portfolio_name: string;
+  portfolio_currency: string;
+  display_currency: string;
+  valuation_timestamp: string;
+  sorted_by: string;
+}
 
-  @ApiProperty({
-    description: '응답 메시지',
-    example: 'Categories summary retrieved successfully.',
-  })
-  message: string;
+export class CategoryItem {
+  category_id: number;
+  category_name: string;
+}
 
-  @ApiProperty({
-    description: '카테고리 요약정보',
-    type: PortfolioAssetData,
-  })
-  data: PortfolioAssetData;
+export class AssetItem {
+  asset_id: number;
+  category_id: number;
+  category_name: string;
+  asset_name: string;
+  native: AssetNative;
+  conversion: Record<string, ConvertedAmount>;
+}
+
+// 네이티브(원화/달러) 기준 값
+export class AssetNative {
+  currency: string; // 예: "KRW" | "USD"
+  price: number;
+  avg_price: number;
+  quantity: number; // 입력의 quntity는 서버에서 quantity로 매핑 권장
+  purchase_amount: number; // 매입 금액
+  eval_amount: number; // 평가 금액
+  profit_amount: number; // 손익액
+  profit_rate: number; // 손익률(소수) 예: 0.1 => 10%
+}
+
+// 환산 값(표시 통화 기준)
+export class ConvertedAmount {
+  fx_pair?: string; // 예: "USD/KRW" (해외자산 환산 시 존재)
+  fx_rate?: number; // 예: 1350.10
+  price: number;
+  avg_price: number;
+  purchase_amount: number;
+  eval_amount: number;
+  profit_amount: number;
 }
