@@ -1,10 +1,67 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CategoryRepository } from './category.repository';
 import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import {
+  GetCategoriesSummaryParamDto,
+  GetCategoriesSummaryQueryDto,
+} from '../dto';
+import { PortfolioValidator } from '../lib/portfolio-validator';
 
 @Injectable()
 export class CategoryService {
-  constructor(private readonly categoryRepository: CategoryRepository) {}
+  constructor(
+    private readonly categoryRepository: CategoryRepository,
+    private readonly portfolioValidator: PortfolioValidator,
+  ) {}
+
+  async getCategoriesSummary(
+    getCategoriesSummaryParamDto: GetCategoriesSummaryParamDto,
+    getCategoriesSummaryQueryDto: GetCategoriesSummaryQueryDto,
+    userId: string,
+  ) {
+    try {
+      const getCategorySummary =
+        await this.categoryRepository.executeGetCategoryTransaction(
+          getCategoriesSummaryParamDto,
+          getCategoriesSummaryQueryDto,
+          userId,
+        );
+      return getCategorySummary;
+    } catch (error) {
+      if (error.message === 'Portfolio not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Portfolio not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Category not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Category not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'Asset not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('Asset not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (error.message === 'FX rate not found') {
+        throw new HttpException(
+          ErrorResponseUtil.notFound('FX rate not found'),
+          HttpStatus.NOT_FOUND,
+        );
+      }
+    }
+
+    throw new HttpException(
+      ErrorResponseUtil.internalServerError('Failed to get categories summary'),
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
 
   async createCategory(userId: string, portfolioId: number, name: string) {
     try {

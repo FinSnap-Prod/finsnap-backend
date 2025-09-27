@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
 
 export class GetCategoriesSummaryParamDto {
@@ -6,11 +7,6 @@ export class GetCategoriesSummaryParamDto {
   @IsInt()
   @Min(1)
   portfolio_id: number;
-
-  @ApiProperty({ description: '카테고리 ID', example: 1 })
-  @IsInt()
-  @Min(1)
-  category_id: number;
 }
 
 export class GetCategoriesSummaryQueryDto {
@@ -23,4 +19,10 @@ export class GetCategoriesSummaryQueryDto {
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   order: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  category_id?: number;
 }
