@@ -1,6 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { AuthRepository } from '../auth/auth.repository';
 import { DataSource } from 'typeorm';
 
@@ -21,10 +20,7 @@ export class UserService {
       await this.userRepository.findByNicknameExcludeSelf(nickname, userId);
 
     if (existingNickname) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('이미 사용 중인 닉네임입니다.'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('nickname already exists');
     }
 
     // 3. 닉네임 수정
@@ -34,10 +30,7 @@ export class UserService {
     const updatedUser = await this.userRepository.findUserById(userId);
 
     if (!updatedUser) {
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError('Failed to update nickname'),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new Error('Failed to update nickname');
     }
 
     // 5. 수정 결과 반환
@@ -55,12 +48,7 @@ export class UserService {
   private async validateNickname(nickname: string) {
     // 추가적인 비즈니스 로직 검증
     if (nickname.trim() !== nickname) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest(
-          '닉네임 앞뒤에 공백이 포함될 수 없습니다.',
-        ),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('nickname cannot contain spaces');
     }
 
     // 금지된 단어 체크
@@ -78,22 +66,12 @@ export class UserService {
         nickname.toLowerCase().includes(word.toLowerCase()),
       )
     ) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest(
-          '사용할 수 없는 단어가 포함되어 있습니다.',
-        ),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('forbidden word contains');
     }
 
     // 연속된 동일 문자 체크
     if (/(.)\1{3,}/.test(nickname)) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest(
-          '연속된 동일한 문자는 3개까지만 사용 가능합니다.',
-        ),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('consecutive identical characters');
     }
   }
 
@@ -104,12 +82,7 @@ export class UserService {
     ]);
 
     if (!user || !auth) {
-      throw new HttpException(
-        ErrorResponseUtil.notFound(
-          'User or authentication information not found',
-        ),
-        HttpStatus.NOT_FOUND,
-      );
+      throw new Error('User or authentication information not found');
     }
 
     return {
@@ -127,56 +100,42 @@ export class UserService {
   }
 
   async deleteUser(userId: string, delete_reason: string) {
-    try {
-      // 1. 유저 삭제 상태 확인
-      const user = await this.userRepository.findUserById(userId);
+    // 1. 유저 삭제 상태 확인
+    const user = await this.userRepository.findUserById(userId);
 
-      if (!user) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('User not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
+    if (!user) {
+      throw new Error('User not found');
+    }
 
-      if (user.deleted) {
-        return {
-          success: true,
-          message: 'Account already deactivated.',
-          data: {
-            user_id: userId,
-            deactivated_at: user.deleted_at?.toISOString() || null,
-            status: 'already_deactivated',
-          },
-        };
-      }
-
-      // 2. 트랜잭션으로 탈퇴 처리
-      await this.dataSource.transaction(async (transactionalEntityManager) => {
-        // 2-1. 사용자 비활성화
-        await this.userRepository.deleteUser(userId, delete_reason);
-
-        // 2-2. 인증 정보 무효화
-        await this.authRepository.invalidateTokens(userId);
-      });
-
+    if (user.deleted) {
       return {
         success: true,
-        message: 'Account deactivated successfully.',
+        message: 'Account already deactivated.',
         data: {
           user_id: userId,
-          deactivated_at: new Date().toISOString(),
-          status: 'deactivated',
+          deactivated_at: user.deleted_at?.toISOString() || null,
+          status: 'already_deactivated',
         },
       };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError('Failed to deactivate account'),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
     }
+
+    // 2. 트랜잭션으로 탈퇴 처리
+    await this.dataSource.transaction(async (transactionalEntityManager) => {
+      // 2-1. 사용자 비활성화
+      await this.userRepository.deleteUser(userId, delete_reason);
+
+      // 2-2. 인증 정보 무효화
+      await this.authRepository.invalidateTokens(userId);
+    });
+
+    return {
+      success: true,
+      message: 'Account deactivated successfully.',
+      data: {
+        user_id: userId,
+        deactivated_at: new Date().toISOString(),
+        status: 'deactivated',
+      },
+    };
   }
 }

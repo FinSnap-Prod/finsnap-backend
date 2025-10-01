@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpException,
-  HttpStatus,
-  Patch,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { UserService } from './user.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -25,7 +16,6 @@ import {
   UpdateNicknameResponseDto,
 } from './dto';
 import { User } from '../auth/decorators/user.decorator';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @ApiTags('user')
 @ApiBearerAuth()
@@ -41,16 +31,9 @@ export class UserController {
     @User() user: any,
     @Body() updateNicknameRequestDto: UpdateNicknameRequestDto,
   ): Promise<UpdateNicknameResponseDto> {
-    try {
-      const { nickname } = updateNicknameRequestDto;
+    const { nickname } = updateNicknameRequestDto;
 
-      return await this.userService.updateNickname(user.id, nickname);
-    } catch (error) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest(error.message),
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    return await this.userService.updateNickname(user.id, nickname);
   }
 
   @Get('me')
