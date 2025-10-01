@@ -5,10 +5,7 @@ import { DataSource, In } from 'typeorm';
 import { UpdatePortfolioItemDto } from '../dto';
 import { Category } from 'src/database/entities/portfolio/category.entity';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
-import { Asset } from 'src/database/entities/asset/asset.entity';
-import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
-import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
-import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
+import { AssetInfoHelper } from '../lib/asset-info.helper';
 
 @Injectable()
 export class PortfolioRepository {
@@ -219,58 +216,17 @@ export class PortfolioRepository {
       // 5. 유저가 보유한 assetId로 Asset 정보 가져오기
       const assetsWithNames = await Promise.all(
         assets.map(async (userAsset) => {
-          // Asset 정보 조회
-          const assetInfo = await manager.findOne(Asset, {
-            where: { id: userAsset.asset_id },
-            relations: ['asset_type'],
-          });
-
+          const assetInfo = userAsset.asset;
           if (!assetInfo) {
             throw new Error('Asset not found');
           }
 
-          // asset_type에 따라 다른 테이블에서 이름 조회
-          let assetName = '';
-
-          // 5-1. 자산 타입에 따른 이름 조회
-          switch (assetInfo.asset_type.type_name) {
-            case 'stock':
-              // StockInfo 테이블에서 이름 조회
-              const stockInfo = await manager.findOne(StockInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = stockInfo
-                ? stockInfo.kor_name || stockInfo.eng_name
-                : 'Unknown Stock';
-              break;
-
-            case 'crypto':
-              // CryptoInfo 테이블에서 이름 조회
-              const cryptoInfo = await manager.findOne(CryptoInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = cryptoInfo
-                ? cryptoInfo.kor_name || cryptoInfo.eng_name
-                : 'Unknown Crypto';
-              break;
-
-            case 'etf':
-              // EtfInfo 테이블에서 이름 조회
-              const etfInfo = await manager.findOne(EtfInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = etfInfo
-                ? etfInfo.kor_name || etfInfo.eng_name
-                : 'Unknown ETF';
-              break;
-
-            default:
-              assetName = 'Unknown Asset Type';
-              break;
-          }
+          // 5-1. 자산 이름 조회
+          const assetName = await AssetInfoHelper.getAssetName(
+            manager,
+            assetInfo.asset_type_id,
+            assetInfo.asset_info_id,
+          );
 
           // 5-2. 유저가 보유한 assetId로 Asset 정보 가져오기
           return {
