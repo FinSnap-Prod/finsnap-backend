@@ -1,9 +1,8 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Favorite } from 'src/database/entities/favorite/favorite.entity';
 import { DataSource, Repository } from 'typeorm';
 import { FavoriteItemDto } from './dto';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 
 @Injectable()
 export class FavoriteFolderRepository {
@@ -102,10 +101,7 @@ export class FavoriteFolderRepository {
         });
 
         if (!existingFolder) {
-          throw new HttpException(
-            ErrorResponseUtil.badRequest('폴더를 찾을 수 없습니다.'),
-            HttpStatus.BAD_REQUEST,
-          );
+          throw new Error('Favorite folder not found');
         }
       }
 
