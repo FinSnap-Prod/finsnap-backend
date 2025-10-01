@@ -1,5 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
+import { Injectable } from '@nestjs/common';
 import { CashRepository } from './cash.repository';
 import { GetCashBalancesParamDto } from '../dto/requests/cash/get-cash-balances.dto';
 import { GetCashBalancesQueryDto } from '../dto/requests/cash/get-cash-balances.dto';
@@ -46,59 +45,49 @@ export class CashService {
     queryDto: GetCashBalancesQueryDto,
     userId: string,
   ): Promise<GetCashBalancesResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio } =
-        await this.portfolioValidator.validatePortfolioForCash(
-          paramDto.portfolio_id,
-          userId,
-        );
-
-      if (!portfolio) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 예수금 조회
-      const balances = await this.cashRepository.getCashBalances(
-        paramDto,
-        queryDto,
+    // 소유권 검증
+    const { portfolio } =
+      await this.portfolioValidator.validatePortfolioForCash(
+        paramDto.portfolio_id,
+        userId,
       );
 
-      return {
-        success: true,
-        message: 'Cash balances retrieved successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          portfolio_name: portfolio.name,
-          sorted_by: queryDto?.sortBy ?? BalancesSortBy.BALANCE,
-          filters: {
-            institution_id: queryDto?.institution_id ?? undefined,
-            currency_code_id: queryDto?.currency_code_id ?? undefined,
-          },
-          balances: balances.map((b) => ({
-            institution_id: b.institution_id,
-            institution_name: b.institution?.display_name ?? '',
-            currency_code_id: b.currency_code_id,
-            currency_code: b.currency_code?.currency_code ?? '',
-            symbol: b.currency_code?.symbol ?? '',
-            balance: Number(b.balance),
-            avg_rate:
-              (b as any).avg_rate === null || (b as any).avg_rate === undefined
-                ? null
-                : Number((b as any).avg_rate),
-            updated_at: (b.updated_at as Date).toISOString(),
-          })),
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError('Failed to get cash balances'),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (!portfolio) {
+      throw new Error('Portfolio not found');
     }
+
+    // 예수금 조회
+    const balances = await this.cashRepository.getCashBalances(
+      paramDto,
+      queryDto,
+    );
+
+    return {
+      success: true,
+      message: 'Cash balances retrieved successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        portfolio_name: portfolio.name,
+        sorted_by: queryDto?.sortBy ?? BalancesSortBy.BALANCE,
+        filters: {
+          institution_id: queryDto?.institution_id ?? undefined,
+          currency_code_id: queryDto?.currency_code_id ?? undefined,
+        },
+        balances: balances.map((b) => ({
+          institution_id: b.institution_id,
+          institution_name: b.institution?.display_name ?? '',
+          currency_code_id: b.currency_code_id,
+          currency_code: b.currency_code?.currency_code ?? '',
+          symbol: b.currency_code?.symbol ?? '',
+          balance: Number(b.balance),
+          avg_rate:
+            (b as any).avg_rate === null || (b as any).avg_rate === undefined
+              ? null
+              : Number((b as any).avg_rate),
+          updated_at: (b.updated_at as Date).toISOString(),
+        })),
+      },
+    };
   }
 
   // 예수금 상세 조회
@@ -107,70 +96,58 @@ export class CashService {
     queryDto: GetCashTransactionsQueryDto,
     userId: string,
   ): Promise<GetCashTransactionsResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution } =
-        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          userId,
-        );
-
-      if (!portfolio || !institution) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 예수금 상세 조회
-      const result = await this.cashRepository.getCashTransactions(
-        paramDto,
-        queryDto,
+    // 소유권 검증
+    const { portfolio, institution } =
+      await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        userId,
       );
 
-      // 반환
-      return {
-        success: true,
-        message: 'Cash transactions retrieved successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          institution_id: paramDto.institution_id,
-          sorted_by: queryDto?.sortBy ?? CashSortBy.RECORDED_AT,
-          filters: {
-            type: queryDto?.type ?? undefined,
-            currency_code_id: queryDto?.currency_code_id ?? undefined,
-            from: queryDto?.from ?? undefined,
-            to: queryDto?.to ?? undefined,
-          },
-          pagination: {
-            current_page: queryDto?.page ?? 1,
-            limit: queryDto?.limit ?? 20,
-            total_items: result.pagination,
-            total_pages: Math.ceil(result.pagination / (queryDto?.limit ?? 20)),
-          },
-          items: result.items.map((t) => ({
-            cash_transaction_id: t.id,
-            type: t.type as unknown as CashTransactionType,
-            amount: parseFloat(t.amount),
-            currency_code_id: t.currency_code_id,
-            currency_code: t.currency_code.currency_code,
-            symbol: t.currency_code?.symbol ?? '',
-            rate: (t as any).rate,
-            recorded_at: t.recorded_at.toISOString(),
-            memo: t.memo ?? null,
-            exchange_group_id: t.exchange_group_id ?? null,
-          })),
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to get cash transactions',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (!portfolio || !institution) {
+      throw new Error('Portfolio or institution not found');
     }
+
+    // 예수금 상세 조회
+    const result = await this.cashRepository.getCashTransactions(
+      paramDto,
+      queryDto,
+    );
+
+    // 반환
+    return {
+      success: true,
+      message: 'Cash transactions retrieved successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        institution_id: paramDto.institution_id,
+        sorted_by: queryDto?.sortBy ?? CashSortBy.RECORDED_AT,
+        filters: {
+          type: queryDto?.type ?? undefined,
+          currency_code_id: queryDto?.currency_code_id ?? undefined,
+          from: queryDto?.from ?? undefined,
+          to: queryDto?.to ?? undefined,
+        },
+        pagination: {
+          current_page: queryDto?.page ?? 1,
+          limit: queryDto?.limit ?? 20,
+          total_items: result.pagination,
+          total_pages: Math.ceil(result.pagination / (queryDto?.limit ?? 20)),
+        },
+        items: result.items.map((t) => ({
+          cash_transaction_id: t.id,
+          type: t.type as unknown as CashTransactionType,
+          amount: parseFloat(t.amount),
+          currency_code_id: t.currency_code_id,
+          currency_code: t.currency_code.currency_code,
+          symbol: t.currency_code?.symbol ?? '',
+          rate: (t as any).rate,
+          recorded_at: t.recorded_at.toISOString(),
+          memo: t.memo ?? null,
+          exchange_group_id: t.exchange_group_id ?? null,
+        })),
+      },
+    };
   }
 
   // 예수금 내역 추가
@@ -179,117 +156,84 @@ export class CashService {
     bodyDto: CreateCashTransactionBodyDto,
     userId: string,
   ): Promise<CreateCashTransactionResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution } =
-        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          userId,
-        );
-
-      if (!portfolio || !institution) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 분기 처리로 일반거래 , 환전거래 구분
-      if (bodyDto.type === CashCreateType.EXCHANGE) {
-        const res = await this.cashRepository.createExchangeTransaction(
-          paramDto,
-          bodyDto,
-        );
-
-        return {
-          success: true,
-          message: 'Exchange cash transactions created successfully.',
-          data: {
-            portfolio_id: paramDto.portfolio_id,
-            institution_id: paramDto.institution_id,
-            exchange_group_id: res.exchange_group_id,
-            transactions: res.transactions.map((t) => ({
-              cash_transaction_id: t.id,
-              type:
-                (t.type as any) === 'exchange_out'
-                  ? CashTransactionType.EXCHANGE_OUT
-                  : CashTransactionType.EXCHANGE_IN,
-              amount: t.amount,
-              currency_code_id: t.currency_code_id,
-              currency_code: '',
-              recorded_at: t.recorded_at,
-              memo: t.memo ?? null,
-              exchange_group_id: res.exchange_group_id,
-              rate: (t as any).rate,
-            })),
-            balances_after: res.balances_after.map((b) => ({
-              currency_code_id: b.currency_code_id,
-              currency_code: '',
-              balance: b.balance,
-              updated_at: b.updated_at,
-            })),
-          },
-        };
-      } else {
-        const res = await this.cashRepository.createCashTransaction(
-          paramDto,
-          bodyDto,
-        );
-
-        return {
-          success: true,
-          message: 'Cash transaction created successfully.',
-          data: {
-            portfolio_id: paramDto.portfolio_id,
-            institution_id: paramDto.institution_id,
-            transaction: {
-              cash_transaction_id: res.transaction.id,
-              type: bodyDto.type as unknown as CashTransactionType,
-              amount: res.transaction.amount,
-              currency_code_id: res.transaction.currency_code_id,
-              currency_code: res.transaction.currency_code,
-              recorded_at: res.transaction.recorded_at,
-              memo: res.transaction.memo ?? null,
-              exchange_group_id: undefined,
-            },
-            balance_after: {
-              currency_code_id: res.balance_after.currency_code_id,
-              currency_code: res.transaction.currency_code,
-              balance: res.balance_after.balance,
-              updated_at: res.balance_after.updated_at,
-            },
-          },
-        };
-      }
-    } catch (error) {
-      // 에러 매핑: 의미있는 4xx로 변환
-      const msg = (error as any)?.message || '';
-      if (msg === 'Portfolio not found' || msg === 'Institution not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (
-        msg === 'Insufficient balance' ||
-        msg === 'Invalid payload' ||
-        msg === 'Invalid exchange payload' ||
-        msg === 'Invalid exchange pair' ||
-        msg === 'Invalid exchange amounts' ||
-        msg === 'Exchange amounts do not match rate'
-      ) {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(msg),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to create cash transaction',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    // 소유권 검증
+    const { portfolio, institution } =
+      await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        userId,
       );
+
+    if (!portfolio || !institution) {
+      throw new Error('Portfolio or institution not found');
+    }
+
+    // 분기 처리로 일반거래 , 환전거래 구분
+    if (bodyDto.type === CashCreateType.EXCHANGE) {
+      const res = await this.cashRepository.createExchangeTransaction(
+        paramDto,
+        bodyDto,
+      );
+
+      return {
+        success: true,
+        message: 'Exchange cash transactions created successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          exchange_group_id: res.exchange_group_id,
+          transactions: res.transactions.map((t) => ({
+            cash_transaction_id: t.id,
+            type:
+              (t.type as any) === 'exchange_out'
+                ? CashTransactionType.EXCHANGE_OUT
+                : CashTransactionType.EXCHANGE_IN,
+            amount: t.amount,
+            currency_code_id: t.currency_code_id,
+            currency_code: '',
+            recorded_at: t.recorded_at,
+            memo: t.memo ?? null,
+            exchange_group_id: res.exchange_group_id,
+            rate: (t as any).rate,
+          })),
+          balances_after: res.balances_after.map((b) => ({
+            currency_code_id: b.currency_code_id,
+            currency_code: '',
+            balance: b.balance,
+            updated_at: b.updated_at,
+          })),
+        },
+      };
+    } else {
+      const res = await this.cashRepository.createCashTransaction(
+        paramDto,
+        bodyDto,
+      );
+
+      return {
+        success: true,
+        message: 'Cash transaction created successfully.',
+        data: {
+          portfolio_id: paramDto.portfolio_id,
+          institution_id: paramDto.institution_id,
+          transaction: {
+            cash_transaction_id: res.transaction.id,
+            type: bodyDto.type as unknown as CashTransactionType,
+            amount: res.transaction.amount,
+            currency_code_id: res.transaction.currency_code_id,
+            currency_code: res.transaction.currency_code,
+            recorded_at: res.transaction.recorded_at,
+            memo: res.transaction.memo ?? null,
+            exchange_group_id: undefined,
+          },
+          balance_after: {
+            currency_code_id: res.balance_after.currency_code_id,
+            currency_code: res.transaction.currency_code,
+            balance: res.balance_after.balance,
+            updated_at: res.balance_after.updated_at,
+          },
+        },
+      };
     }
   }
 
@@ -298,94 +242,47 @@ export class CashService {
     paramDto: DeleteCashTransactionParamDto,
     userId: string,
   ): Promise<DeleteCashTransactionResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution, cashTransaction } =
-        await this.portfolioValidator.validatePortfolioForCashTransaction(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          paramDto.id,
-          userId,
-        );
-
-      if (!portfolio || !institution || !cashTransaction) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound(
-            'Portfolio or institution or cash transaction not found',
-          ),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      if (
-        cashTransaction.type === CashTransactionType.EXCHANGE_IN ||
-        cashTransaction.type === CashTransactionType.EXCHANGE_OUT
-      ) {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Cannot delete exchange transaction'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const res = await this.cashRepository.deleteCashTransaction(paramDto);
-
-      if (!res.balance) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Balance not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return {
-        success: true,
-        message: 'Cash transaction deleted successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          institution_id: paramDto.institution_id,
-          deleted_transaction_id: paramDto.id!,
-          balance_after: {
-            currency_code_id: res.balance.currency_code_id,
-            currency_code: res.balance.currency_code.currency_code,
-            balance: Number(res.balance.balance),
-            updated_at: res.balance.updated_at.toISOString(),
-          },
-        },
-      };
-    } catch (error) {
-      const msg = (error as any)?.message || '';
-      if (msg === 'Transaction not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Transaction not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (msg === 'Insufficient balance') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Insufficient balance for deletion'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Linked asset transaction cannot be deleted') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Cannot delete cash transaction linked to an asset history'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Exchange transaction requires group deletion') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(
-            'Exchange leg deletion not allowed; use exchange_group_id',
-          ),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to delete cash transaction',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    // 소유권 검증
+    const { portfolio, institution, cashTransaction } =
+      await this.portfolioValidator.validatePortfolioForCashTransaction(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        paramDto.id,
+        userId,
       );
+
+    if (!portfolio || !institution || !cashTransaction) {
+      throw new Error('Portfolio or institution or cash transaction not found');
     }
+
+    if (
+      cashTransaction.type === CashTransactionType.EXCHANGE_IN ||
+      cashTransaction.type === CashTransactionType.EXCHANGE_OUT
+    ) {
+      throw new Error('Cannot delete exchange transaction');
+    }
+
+    const res = await this.cashRepository.deleteCashTransaction(paramDto);
+
+    if (!res.balance) {
+      throw new Error('Balance not found');
+    }
+
+    return {
+      success: true,
+      message: 'Cash transaction deleted successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        institution_id: paramDto.institution_id,
+        deleted_transaction_id: paramDto.id!,
+        balance_after: {
+          currency_code_id: res.balance.currency_code_id,
+          currency_code: res.balance.currency_code.currency_code,
+          balance: Number(res.balance.balance),
+          updated_at: res.balance.updated_at.toISOString(),
+        },
+      },
+    };
   }
 
   // 예수금 내역 삭제 (환전)
@@ -394,73 +291,40 @@ export class CashService {
     queryDto: DeleteExchangeCashTransactionQueryDto,
     userId: string,
   ): Promise<DeleteCashTransactionResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution } =
-        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          userId,
-        );
-
-      if (!portfolio || !institution) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 예수금 내역 삭제
-      const res = await this.cashRepository.deleteCashTransactionGroup(
-        paramDto,
-        queryDto,
+    // 소유권 검증
+    const { portfolio, institution } =
+      await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        userId,
       );
 
-      return {
-        success: true,
-        message: 'Cash transaction group deleted successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          institution_id: paramDto.institution_id,
-          exchange_group_id: queryDto.exchange_group_id!,
-          deleted_transaction_ids: res.deleted_transaction_ids,
-          balances_after: res.balances_after.map((b) => ({
-            currency_code_id: b.currency_code_id,
-            currency_code: b.currency_code ?? '',
-            balance: Number(b.balance),
-            updated_at: b.updated_at ?? new Date().toISOString(),
-          })),
-        },
-      };
-    } catch (error) {
-      const msg = (error as any)?.message || '';
-      if (msg === 'Transaction not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Transaction not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (msg === 'Insufficient balance') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Insufficient balance for deletion'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Exchange transaction requires group deletion') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(
-            'Exchange leg deletion not allowed; use exchange_group_id',
-          ),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to delete cash transaction',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (!portfolio || !institution) {
+      throw new Error('Portfolio or institution not found');
     }
+
+    // 예수금 내역 삭제
+    const res = await this.cashRepository.deleteCashTransactionGroup(
+      paramDto,
+      queryDto,
+    );
+
+    return {
+      success: true,
+      message: 'Cash transaction group deleted successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        institution_id: paramDto.institution_id,
+        exchange_group_id: queryDto.exchange_group_id!,
+        deleted_transaction_ids: res.deleted_transaction_ids,
+        balances_after: res.balances_after.map((b) => ({
+          currency_code_id: b.currency_code_id,
+          currency_code: b.currency_code ?? '',
+          balance: Number(b.balance),
+          updated_at: b.updated_at ?? new Date().toISOString(),
+        })),
+      },
+    };
   }
 
   // 예수금 내역 수정
@@ -469,85 +333,48 @@ export class CashService {
     bodyDto: UpdateCashTransactionBodyDto,
     userId: string,
   ): Promise<UpdateCashTransactionResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution } =
-        await this.portfolioValidator.validatePortfolioForCashTransaction(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          paramDto.id,
-          userId,
-        );
-
-      if (!portfolio || !institution) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 예수금 내역 수정
-      const res = await this.cashRepository.updateCashTransaction(
-        paramDto,
-        bodyDto,
+    // 소유권 검증
+    const { portfolio, institution } =
+      await this.portfolioValidator.validatePortfolioForCashTransaction(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        paramDto.id,
+        userId,
       );
 
-      return {
-        success: true,
-        message: 'Cash transaction updated successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          institution_id: paramDto.institution_id,
-          transaction: {
-            cash_transaction_id: res.updated.id,
-            type: res.updated.type as unknown as CashTransactionType,
-            amount: res.updated.amount,
-            currency_code_id: res.updated.currency_code_id,
-            currency_code: res.updated.currency_code ?? '',
-            recorded_at: res.updated.recorded_at,
-            memo: res.updated.memo ?? null,
-          },
-          balance_after: {
-            currency_code_id: res.balance_after.currency_code_id,
-            currency_code: res.balance_after.currency_code ?? '',
-            balance: res.balance_after.balance,
-            updated_at: res.balance_after.updated_at,
-          },
-        },
-      };
-    } catch (error) {
-      const msg = (error as any)?.message || '';
-      if (msg === 'Transaction not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Transaction not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (msg === 'Cannot update exchange transaction') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Cannot update exchange transaction'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Insufficient balance') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Insufficient balance for update'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Unsupported type' || msg === 'Invalid payload') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(msg),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to update cash transaction',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (!portfolio || !institution) {
+      throw new Error('Portfolio or institution not found');
     }
+
+    // 예수금 내역 수정
+    const res = await this.cashRepository.updateCashTransaction(
+      paramDto,
+      bodyDto,
+    );
+
+    return {
+      success: true,
+      message: 'Cash transaction updated successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        institution_id: paramDto.institution_id,
+        transaction: {
+          cash_transaction_id: res.updated.id,
+          type: res.updated.type as unknown as CashTransactionType,
+          amount: res.updated.amount,
+          currency_code_id: res.updated.currency_code_id,
+          currency_code: res.updated.currency_code ?? '',
+          recorded_at: res.updated.recorded_at,
+          memo: res.updated.memo ?? null,
+        },
+        balance_after: {
+          currency_code_id: res.balance_after.currency_code_id,
+          currency_code: res.balance_after.currency_code ?? '',
+          balance: res.balance_after.balance,
+          updated_at: res.balance_after.updated_at,
+        },
+      },
+    };
   }
 
   // 예수금 내역 수정 (환전)
@@ -557,92 +384,39 @@ export class CashService {
     queryDto: UpdateExchangeCashTransactionQueryDto,
     userId: string,
   ): Promise<UpdateCashTransactionGroupResponseDto> {
-    try {
-      // 소유권 검증
-      const { portfolio, institution } =
-        await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
-          paramDto.portfolio_id,
-          paramDto.institution_id,
-          userId,
-        );
-
-      if (!portfolio || !institution) {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Portfolio or institution not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // 예수금 내역 수정
-      const res = await this.cashRepository.updateCashTransactionGroup(
-        paramDto,
-        bodyDto,
-        queryDto,
+    // 소유권 검증
+    const { portfolio, institution } =
+      await this.portfolioValidator.validatePortfolioAndFindUserAssetForCash(
+        paramDto.portfolio_id,
+        paramDto.institution_id,
+        userId,
       );
-      return {
-        success: true,
-        message: 'Exchange cash transaction updated successfully.',
-        data: {
-          portfolio_id: paramDto.portfolio_id,
-          institution_id: paramDto.institution_id,
-          exchange_group_id: res.exchange_group_id,
-          updated_transaction_ids: res.updated_transaction_ids,
-          balance_after: {
-            currency_code_id: res.balance_after.currency_code_id,
-            currency_code: res.balance_after.currency_code ?? '',
-            balance: Number(res.balance_after.balance),
-            updated_at:
-              res.balance_after.updated_at ?? new Date().toISOString(),
-          },
-        },
-      };
-    } catch (error) {
-      const msg = (error as any)?.message || '';
-      if (msg === 'Transaction not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Transaction not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (msg === 'Transactions not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Transactions not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      if (msg === 'Insufficient balance') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Insufficient balance for update'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Unsupported type' || msg === 'Invalid payload') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(msg),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (msg === 'Inconsistent exchange group state') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(msg),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (
-        msg === 'Only base↔foreign exchanges supported' ||
-        msg === 'Exchange amounts do not match rate'
-      ) {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(msg),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError(
-          'Failed to update cash transaction',
-        ),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+
+    if (!portfolio || !institution) {
+      throw new Error('Portfolio or institution not found');
     }
+
+    // 예수금 내역 수정
+    const res = await this.cashRepository.updateCashTransactionGroup(
+      paramDto,
+      bodyDto,
+      queryDto,
+    );
+    return {
+      success: true,
+      message: 'Exchange cash transaction updated successfully.',
+      data: {
+        portfolio_id: paramDto.portfolio_id,
+        institution_id: paramDto.institution_id,
+        exchange_group_id: res.exchange_group_id,
+        updated_transaction_ids: res.updated_transaction_ids,
+        balance_after: {
+          currency_code_id: res.balance_after.currency_code_id,
+          currency_code: res.balance_after.currency_code ?? '',
+          balance: Number(res.balance_after.balance),
+          updated_at: res.balance_after.updated_at ?? new Date().toISOString(),
+        },
+      },
+    };
   }
 }

@@ -234,7 +234,8 @@ export class CategoryRepository {
         if (!isFinite(evalAmount) || evalAmount <= 0) {
           evalAmount = Number(((marketPrice ?? 0) * qty).toFixed(2));
         }
-        const fallbackPrice = qty > 0 ? Number((evalAmount / qty).toFixed(6)) : 0;
+        const fallbackPrice =
+          qty > 0 ? Number((evalAmount / qty).toFixed(6)) : 0;
         const unitPrice = marketPrice ?? fallbackPrice;
         let profitAmount = Number(ua.profit_loss);
         if (!isFinite(profitAmount)) {
@@ -242,7 +243,10 @@ export class CategoryRepository {
         }
         let profitRate = Number(ua.profit_rate);
         if (!isFinite(profitRate)) {
-          profitRate = purchaseAmount > 0 ? Number((profitAmount / purchaseAmount).toFixed(5)) : 0;
+          profitRate =
+            purchaseAmount > 0
+              ? Number((profitAmount / purchaseAmount).toFixed(5))
+              : 0;
         }
 
         const conversion: Record<string, any> = {};

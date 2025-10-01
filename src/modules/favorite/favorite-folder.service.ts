@@ -1,6 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { FavoriteFolderRepository } from './favorite-folder.repository';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { FavoriteItemDto } from './dto';
 
 @Injectable()
@@ -36,10 +35,7 @@ export class FavoriteFolderService {
       await this.favoriteRepository.findByFolderNameWithUserId(name, userId);
 
     if (existingFolder) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('폴더 이름이 중복됩니다.'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Favorite folder name already exists');
     }
 
     //2-1. 폴더 정렬 순서 최대값 조회
@@ -58,10 +54,7 @@ export class FavoriteFolderService {
       await this.favoriteRepository.findByFolderNameWithUserId(name, userId);
 
     if (!createdFolder) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('폴더 생성에 실패했습니다.'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Failed to create favorite folder');
     }
 
     //4. 생성된 폴더 리턴
@@ -87,10 +80,7 @@ export class FavoriteFolderService {
       );
 
     if (!existingFolder) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('폴더를 찾을 수 없습니다.'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Favorite folder not found');
     }
 
     const deletedSortOrder = existingFolder.sort_order;

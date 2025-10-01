@@ -1,10 +1,8 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { FavoriteAssetRepository } from './favorite-asset.repository';
-import { ErrorResponseUtil } from 'src/common/utils/error-response.util';
 import { StockRepository } from '../investment/stock/stock.repository';
 import { EtfRepository } from '../investment/etf/etf.repository';
 import { CryptoRepository } from '../investment/crypto/crypto.repository';
-import { DataSource } from 'typeorm';
 import { UpdateFavoriteAssetItemDto } from './dto';
 
 @Injectable()
@@ -30,10 +28,7 @@ export class FavoriteAssetService {
       );
 
     if (!favoriteFolder) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('Favorite folder not found'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Favorite folder not found');
     }
 
     // 2. favorite_asset 조회
@@ -141,10 +136,7 @@ export class FavoriteAssetService {
       );
 
     if (!favoriteFolder) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('Favorite folder not found'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Favorite folder not found');
     }
 
     // 2. 중복 추가 여부 조회
@@ -155,10 +147,7 @@ export class FavoriteAssetService {
     );
 
     if (existingAsset) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('Asset already exists in favorite folder'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Asset already exists in favorite folder');
     }
 
     // 3. 정렬 순서 최대값 조회
@@ -176,10 +165,7 @@ export class FavoriteAssetService {
     );
 
     if (!newAsset) {
-      throw new HttpException(
-        ErrorResponseUtil.badRequest('Failed to add asset to favorite folder'),
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Failed to add asset to favorite folder');
     }
     // 5. 자산 상세 정보 조회 (이후 메소드 분리 필요)
     let info;
@@ -224,42 +210,11 @@ export class FavoriteAssetService {
     favorite_id: string,
     favorite_asset_id: string,
   ) {
-    try {
-      return await this.favoriteAssetRepository.executeDeleteFavoriteAssetTransaction(
-        userId,
-        Number(favorite_id),
-        Number(favorite_asset_id),
-      );
-    } catch (error) {
-      if (error.message === 'Favorite folder not found') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Favorite folder not found'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      if (error.message === 'Favorite asset not found') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Favorite asset not found'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      if (error.message === 'Failed to delete asset from favorite folder') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest(
-            'Failed to delete asset from favorite folder',
-          ),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      // 예상치 못한 에러
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError('An unexpected error occurred'),
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await this.favoriteAssetRepository.executeDeleteFavoriteAssetTransaction(
+      userId,
+      Number(favorite_id),
+      Number(favorite_asset_id),
+    );
   }
 
   async updateFavoriteAsset(
@@ -267,56 +222,20 @@ export class FavoriteAssetService {
     favorite_id: string,
     favoriteAssets: UpdateFavoriteAssetItemDto[],
   ) {
-    try {
-      const updatedAssets =
-        await this.favoriteAssetRepository.executeUpdateFavoriteAssetTransaction(
-          userId,
-          Number(favorite_id),
-          favoriteAssets,
-        );
-
-      return {
-        success: true,
-        message: 'Favorite assets order updated successfully.',
-        data: updatedAssets.map((asset) => ({
-          favorite_asset_id: asset.id,
-          sort_order: asset.sort_order,
-        })),
-      };
-    } catch (error) {
-      if (error.message === 'Favorite folder not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Favorite folder not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      if (error.message === 'Some favorite assets not found') {
-        throw new HttpException(
-          ErrorResponseUtil.notFound('Some favorite assets not found'),
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      if (error.message === 'Duplicate sort orders are not allowed') {
-        throw new HttpException(
-          ErrorResponseUtil.badRequest('Duplicate sort orders are not allowed'),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      if (error.message.includes('Failed to update asset')) {
-        throw new HttpException(
-          ErrorResponseUtil.internalServerError(error.message),
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      // 예상치 못한 에러
-      throw new HttpException(
-        ErrorResponseUtil.internalServerError('An unexpected error occurred'),
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    const updatedAssets =
+      await this.favoriteAssetRepository.executeUpdateFavoriteAssetTransaction(
+        userId,
+        Number(favorite_id),
+        favoriteAssets,
       );
-    }
+
+    return {
+      success: true,
+      message: 'Favorite assets order updated successfully.',
+      data: updatedAssets.map((asset) => ({
+        favorite_asset_id: asset.id,
+        sort_order: asset.sort_order,
+      })),
+    };
   }
 }
