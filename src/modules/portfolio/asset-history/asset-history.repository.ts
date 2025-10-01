@@ -7,10 +7,10 @@ import {
   UpdateAssetHistoryRequestDto,
 } from '../dto';
 import { AssetHistory } from 'src/database/entities/portfolio/asset-history.entity';
-import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
-import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
-import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
 import { CashTransaction } from 'src/database/entities/account/cash-transaction.entity';
+import { AssetInfoHelper } from 'src/modules/portfolio/lib/asset-info.helper';
+import { BalanceHelper } from '../lib/balance.helper';
+import { CashTransactionHelper } from '../lib/cash-transaction.helper';
 
 @Injectable()
 export class AssetHistoryRepository {
@@ -74,33 +74,11 @@ export class AssetHistoryRepository {
       const totalPages = Math.ceil(totalItems / limitNumber);
 
       // 5. AssetInfo에서 실제 이름 조회 필요
-      let assetName = '';
-      switch (userAsset.asset.asset_type_id) {
-        case 1:
-          const stockInfo = await manager.findOne(StockInfo, {
-            where: {
-              id: userAsset.asset.asset_info_id,
-            },
-          });
-          assetName = stockInfo?.kor_name || stockInfo?.eng_name || '';
-          break;
-        case 2:
-          const etfInfo = await manager.findOne(EtfInfo, {
-            where: {
-              id: userAsset.asset.asset_info_id,
-            },
-          });
-          assetName = etfInfo?.kor_name || etfInfo?.eng_name || '';
-          break;
-        case 3:
-          const cryptoInfo = await manager.findOne(CryptoInfo, {
-            where: {
-              id: userAsset.asset.asset_info_id,
-            },
-          });
-          assetName = cryptoInfo?.kor_name || cryptoInfo?.eng_name || '';
-          break;
-      }
+      const assetName = await AssetInfoHelper.getAssetName(
+        manager,
+        userAsset.asset.asset_type_id,
+        userAsset.asset.asset_info_id,
+      );
 
       // 6. 요약 정보 계산
       const summary = await this.getAssetHistorySummary(userAsset.id, manager);
@@ -272,18 +250,20 @@ export class AssetHistoryRepository {
         const tradeType = asset_history_type_id === 1 ? 'buy' : 'sell';
         const amount = Number(assetHistory.total_amount);
 
-        await this.ensureBalanceRow(transactionManager, portfolioId, institutionId, currencyId);
-        await this.applyCashDeltaAndInsertTrade(transactionManager, {
-          portfolio_id: portfolioId,
-          institution_id: institutionId,
-          currency_code_id: currencyId,
-          effectType: tradeType,
-          amount,
-          recorded_at: assetHistory.recorded_at,
-          memo: assetHistory.memo ?? undefined,
-          asset_history_id: assetHistory.id,
-          user_asset_id: userAssetId,
-        });
+        await CashTransactionHelper.createLinkedTransaction(
+          transactionManager,
+          {
+            portfolio_id: portfolioId,
+            institution_id: institutionId,
+            currency_code_id: currencyId,
+            effectType: tradeType,
+            amount,
+            recorded_at: assetHistory.recorded_at,
+            memo: assetHistory.memo ?? undefined,
+            asset_history_id: assetHistory.id,
+            user_asset_id: userAssetId,
+          },
+        );
       }
 
       // 5. 필요한 모든 데이터를 포함하여 반환
@@ -541,12 +521,22 @@ export class AssetHistoryRepository {
       const prevPortfolioId = userAsset.category.portfolio_id;
       const prevInstitutionId = userAsset.institution_id;
       const prevCurrencyId = userAsset.currency_code_id;
-      await this.ensureBalanceRow(manager, prevPortfolioId, prevInstitutionId, prevCurrencyId);
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        prevPortfolioId,
+        prevInstitutionId,
+        prevCurrencyId,
+      );
 
       const nextPortfolioId = userAsset.category.portfolio_id; // 포트폴리오 이동 미지원 가정
       const nextInstitutionId = institution_id ?? userAsset.institution_id;
       const nextCurrencyId = currency_code_id ?? userAsset.currency_code_id;
-      await this.ensureBalanceRow(manager, nextPortfolioId, nextInstitutionId, nextCurrencyId);
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        nextPortfolioId,
+        nextInstitutionId,
+        nextCurrencyId,
+      );
 
       // 기존 효과 롤백
       if (linked) {
@@ -574,32 +564,11 @@ export class AssetHistoryRepository {
 
       // 5) 응답 구성에 필요한 이름/타입 문자열 준비
       // 자산 이름 조회
-      let assetName = '';
-      switch (userAsset.asset.asset_type_id) {
-        case 1: {
-          const stockInfo = await manager.findOne(StockInfo, {
-            where: { id: userAsset.asset.asset_info_id },
-          });
-          assetName = stockInfo?.kor_name || stockInfo?.eng_name || '';
-          break;
-        }
-        case 2: {
-          const etfInfo = await manager.findOne(EtfInfo, {
-            where: { id: userAsset.asset.asset_info_id },
-          });
-          assetName = etfInfo?.kor_name || etfInfo?.eng_name || '';
-          break;
-        }
-        case 3: {
-          const cryptoInfo = await manager.findOne(CryptoInfo, {
-            where: { id: userAsset.asset.asset_info_id },
-          });
-          assetName = cryptoInfo?.kor_name || cryptoInfo?.eng_name || '';
-          break;
-        }
-        default:
-          assetName = '';
-      }
+      const assetName = await AssetInfoHelper.getAssetName(
+        manager,
+        userAsset.asset.asset_type_id,
+        userAsset.asset.asset_info_id,
+      );
 
       const typeName = this.getTypeNameById(newTypeId);
 
@@ -687,96 +656,6 @@ export class AssetHistoryRepository {
     }
   }
 
-  // === T8 Helpers: Cash integration ===
-  /**
-   * (포트폴리오, 기관, 통화) 조합의 잔고 행이 존재하도록 보장
-   * - 없으면 balance=0으로 `portfolio_institution_balance` 행을 생성
-   * - UNIQUE 제약 + ON CONFLICT DO NOTHING으로 멱등 보장
-   */
-  private async ensureBalanceRow(
-    manager: any,
-    portfolio_id: number,
-    institution_id: number,
-    currency_code_id: number,
-  ) {
-    await manager.query(
-      `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-       VALUES ($1,$2,$3,0)
-       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-      [portfolio_id, institution_id, currency_code_id],
-    );
-  }
-
-  /**
-   * 매수/매도에 따른 예수금 증감 적용 후 연동 cash_transaction 삽입
-   * - buy: balance -= amount (잔액 가드: balance >= amount)
-   * - sell: balance += amount
-   * - cash_transaction에 asset_history_id/user_asset_id로 연동
-   * - 호출한 트랜잭션 manager 내에서 실행
-   */
-  private async applyCashDeltaAndInsertTrade(
-    manager: any,
-    args: {
-      portfolio_id: number;
-      institution_id: number;
-      currency_code_id: number;
-      effectType: 'buy' | 'sell';
-      amount: number;
-      recorded_at: Date;
-      memo?: string;
-      asset_history_id: number;
-      user_asset_id: number;
-    },
-  ) {
-    const {
-      portfolio_id,
-      institution_id,
-      currency_code_id,
-      effectType,
-      amount,
-      recorded_at,
-      memo,
-      asset_history_id,
-      user_asset_id,
-    } = args;
-
-    if (effectType === 'buy') {
-      const rows = await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance - $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-           AND balance >= $4
-         RETURNING id`,
-        [portfolio_id, institution_id, currency_code_id, amount],
-      );
-      if (!rows?.length) throw new Error('Insufficient balance');
-    } else {
-      await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-        [portfolio_id, institution_id, currency_code_id, amount],
-      );
-    }
-
-    await manager
-      .createQueryBuilder()
-      .insert()
-      .into(CashTransaction)
-      .values({
-        portfolio_id,
-        institution_id,
-        type: effectType,
-        amount: amount.toFixed(2),
-        currency_code_id,
-        recorded_at,
-        memo: memo ?? undefined,
-        asset_history_id,
-        user_asset_id,
-      })
-      .execute();
-  }
-
   /**
    * 기존 연동 cash_transaction의 현금 효과만 롤백
    * - buy: 잔고 += amount (복구)
@@ -786,22 +665,21 @@ export class AssetHistoryRepository {
   private async rollbackCashForLinkedTx(manager: any, tx: CashTransaction) {
     const amt = Number(tx.amount);
     if (tx.type === 'buy') {
-      await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-        [tx.portfolio_id, tx.institution_id, tx.currency_code_id, amt],
+      await BalanceHelper.increaseBalance(
+        manager,
+        tx.portfolio_id,
+        tx.institution_id,
+        tx.currency_code_id,
+        amt,
       );
     } else if (tx.type === 'sell') {
-      const rows = await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance - $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-           AND balance >= $4
-         RETURNING id`,
-        [tx.portfolio_id, tx.institution_id, tx.currency_code_id, amt],
+      await BalanceHelper.decreaseBalance(
+        manager,
+        tx.portfolio_id,
+        tx.institution_id,
+        tx.currency_code_id,
+        amt,
       );
-      if (!rows?.length) throw new Error('Insufficient balance');
     }
   }
 
@@ -839,21 +717,20 @@ export class AssetHistoryRepository {
     } = args;
 
     if (effectType === 'buy') {
-      const rows = await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance - $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-           AND balance >= $4
-         RETURNING id`,
-        [portfolio_id, institution_id, currency_code_id, amount],
+      await BalanceHelper.decreaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        currency_code_id,
+        amount,
       );
-      if (!rows?.length) throw new Error('Insufficient balance');
     } else {
-      await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-        [portfolio_id, institution_id, currency_code_id, amount],
+      await BalanceHelper.increaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        currency_code_id,
+        amount,
       );
     }
 

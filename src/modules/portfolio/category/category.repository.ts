@@ -7,15 +7,9 @@ import {
   GetCategoriesSummaryQueryDto,
 } from '../dto';
 import { UserAsset } from 'src/database/entities/portfolio/user-asset.entity';
-import { Asset } from 'src/database/entities/asset/asset.entity';
-import { StockInfo } from 'src/database/entities/stock/stock-info.entity';
-import { StockMarketData } from 'src/database/entities/stock/stock-market-data.entity';
-import { CryptoInfo } from 'src/database/entities/crypto/crypto-info.entity';
-import { CryptoMarketData } from 'src/database/entities/crypto/crypto-market-data.entity';
-import { EtfInfo } from 'src/database/entities/etf/etf-info.entity';
-import { EtfMarketData } from 'src/database/entities/etf/etf-market-data.entity';
 import { CurrencyCode } from 'src/database/entities/code/currency-code.entity';
 import { ExchangeRateDaily } from 'src/database/entities/exchange/exchange-rate-daily.entity';
+import { AssetInfoHelper } from '../lib/asset-info.helper';
 
 @Injectable()
 export class CategoryRepository {
@@ -69,62 +63,17 @@ export class CategoryRepository {
       // 5) 자산명 조회 (asset_type에 따라 개별 테이블에서 kor_name/eng_name 가져오기)
       const assetsWithName = await Promise.all(
         userAssets.map(async (ua) => {
-          const assetInfo = await manager.findOne(Asset, {
-            where: { id: ua.asset_id },
-            relations: ['asset_type'],
-          });
-
+          const assetInfo = ua.asset;
           if (!assetInfo) {
             throw new Error('Asset not found');
           }
 
-          let assetName = '';
-          let marketPrice: number | undefined = undefined;
-          const assetType = assetInfo.asset_type?.type_name?.toLowerCase();
-          switch (assetType) {
-            case 'stock': {
-              const info = await manager.findOne(StockInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = info?.kor_name || info?.eng_name || '';
-              const m = await manager.findOne(StockMarketData, {
-                where: { stock_info_id: assetInfo.asset_info_id },
-                select: ['price'],
-              });
-              marketPrice = m ? Number(m.price) : undefined;
-              break;
-            }
-            case 'crypto': {
-              const info = await manager.findOne(CryptoInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = info?.kor_name || info?.eng_name || '';
-              const m = await manager.findOne(CryptoMarketData, {
-                where: { crypto_info_id: assetInfo.asset_info_id },
-                select: ['price'],
-              });
-              marketPrice = m ? Number(m.price) : undefined;
-              break;
-            }
-            case 'etf': {
-              const info = await manager.findOne(EtfInfo, {
-                where: { id: assetInfo.asset_info_id },
-                select: ['kor_name', 'eng_name'],
-              });
-              assetName = info?.kor_name || info?.eng_name || '';
-              const m = await manager.findOne(EtfMarketData, {
-                where: { etf_info_id: assetInfo.asset_info_id },
-                select: ['price'],
-              });
-              marketPrice = m ? Number(m.price) : undefined;
-              break;
-            }
-            default: {
-              assetName = '';
-            }
-          }
+          const { name: assetName, marketPrice } =
+            await AssetInfoHelper.getAssetWithMarketPrice(
+              manager,
+              assetInfo.asset_type_id,
+              assetInfo.asset_info_id,
+            );
 
           return { ua, assetName, marketPrice };
         }),

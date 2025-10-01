@@ -30,6 +30,7 @@ import { PortfolioInstitutionBalance } from 'src/database/entities/account/portf
 import { BalancesSortBy } from '../dto/enum/balances-sortby.enum';
 import { SortOrder } from '../dto/enum/sort-order.enum';
 import { CashSortBy } from '../dto/enum/cash-sortby.enum';
+import { BalanceHelper } from '../lib/balance.helper';
 
 @Injectable()
 export class CashRepository {
@@ -205,54 +206,39 @@ export class CashRepository {
     const amt = Number(amount);
 
     return this.dataSource.transaction(async (manager) => {
-      // 1) 잔고 row upsert (존재하지 않으면 balance=0으로 생성)
-      // ON CONFLICE DO NOTHING: 이미 존재하면 무시
-      await manager.query(
-        ` INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-          VALUES ($1, $2, $3, 0)
-          ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING
-          `,
-        [portfolio_id, institution_id, currency_code_id],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        currency_code_id,
       );
 
       // 2) 잔고 증감(음수 방지: 감소 시 조건부 UPDATE)
-      let balanceRow: {
+      const result = isIncrease
+        ? await BalanceHelper.increaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            currency_code_id,
+            amt,
+          )
+        : await BalanceHelper.decreaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            currency_code_id,
+            amt,
+          );
+
+      const balanceRow: {
         balance: string;
         currency_code_id: number;
         updated_at: string;
-      } | null = null;
-
-      if (isIncrease) {
-        // 증가
-        const rows = await manager.query(
-          `
-            UPDATE portfolio_institution_balance
-            SET balance = balance + $4,
-                updated_at = NOW()
-            WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-            RETURNING balance, currency_code_id, updated_at
-            `,
-          [portfolio_id, institution_id, currency_code_id, amt],
-        );
-        balanceRow = rows?.[0] ?? null;
-      } else {
-        // 감소
-        const rows = await manager.query(
-          `
-            UPDATE portfolio_institution_balance
-            SET balance = balance - $4,
-                updated_at = NOW()
-            WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-              AND balance >= $4
-            RETURNING balance, currency_code_id, updated_at
-            `,
-          [portfolio_id, institution_id, currency_code_id, amt],
-        );
-        if (!rows?.length) {
-          throw new Error('Insufficient balance'); // 서비스/컨트롤러에서 400 매핑
-        }
-        balanceRow = rows[0];
-      }
+      } = {
+        balance: result.balance.toString(),
+        currency_code_id,
+        updated_at: result.updated_at.toISOString(),
+      };
 
       // 3) 거래 이력 insert
       const insertResult = await manager
@@ -374,17 +360,17 @@ export class CashRepository {
 
     return this.dataSource.transaction(async (manager) => {
       // 잔고 row upsert 두 통화
-      await manager.query(
-        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-         VALUES ($1,$2,$3,0)
-         ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-        [portfolio_id, institution_id, from_currency_id],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        from_currency_id,
       );
-      await manager.query(
-        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-         VALUES ($1,$2,$3,0)
-         ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-        [portfolio_id, institution_id, to_currency_id],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        to_currency_id,
       );
 
       // 평균 환율 갱신을 위해 대상 외화 row 선조회(락)
@@ -406,25 +392,21 @@ export class CashRepository {
       }
 
       // from 감소 (음수 방지)
-      const dec = await manager.query(
-        `UPDATE portfolio_institution_balance
-        SET balance = balance - $4, updated_at = NOW()
-        WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-        AND balance >= $4
-        RETURNING balance, currency_code_id, updated_at`,
-        [portfolio_id, institution_id, from_currency_id, fromAmt],
+      const dec = await BalanceHelper.decreaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        from_currency_id,
+        fromAmt,
       );
-      if (!dec?.length) {
-        throw new Error('Insufficient balance');
-      }
 
       // to 증가
-      const inc = await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-         RETURNING balance, currency_code_id, updated_at`,
-        [portfolio_id, institution_id, to_currency_id, toAmt],
+      const inc = await BalanceHelper.increaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        to_currency_id,
+        toAmt,
       );
 
       // 평균환율 갱신
@@ -526,17 +508,13 @@ export class CashRepository {
         balances_after: [
           {
             currency_code_id: from_currency_id,
-            balance: Number(dec[0]?.balance ?? 0),
-            updated_at: new Date(
-              dec[0]?.updated_at ?? Date.now(),
-            ).toISOString(),
+            balance: Number(dec.balance ?? 0),
+            updated_at: new Date(dec.updated_at ?? Date.now()).toISOString(),
           },
           {
             currency_code_id: to_currency_id,
-            balance: Number(inc[0]?.balance ?? 0),
-            updated_at: new Date(
-              inc[0]?.updated_at ?? Date.now(),
-            ).toISOString(),
+            balance: Number(inc.balance ?? 0),
+            updated_at: new Date(inc.updated_at ?? Date.now()).toISOString(),
           },
         ],
       };
@@ -567,11 +545,11 @@ export class CashRepository {
       const curId = tx.currency_code_id;
 
       // 2. 잔액 테이블에 해당 통화 레코드가 없으면 생성 (잔액 0으로)
-      await manager.query(
-        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-         VALUES ($1,$2,$3,0)
-         ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-        [portfolio_id, institution_id, curId],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        curId,
       );
 
       // 3. 거래 타입별 잔액 조정 로직
@@ -580,22 +558,21 @@ export class CashRepository {
 
       if (INCREASE.has(tx.type)) {
         // 입금류 거래 삭제: 잔액에서 해당 금액 차감 (잔액 부족 시 에러)
-        const rows = await manager.query(
-          `UPDATE portfolio_institution_balance
-             SET balance = balance - $4, updated_at = NOW()
-           WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-             AND balance >= $4
-           RETURNING balance, updated_at`,
-          [portfolio_id, institution_id, curId, amt],
+        await BalanceHelper.decreaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          curId,
+          amt,
         );
-        if (!rows?.length) throw new Error('Insufficient balance');
       } else if (DECREASE.has(tx.type)) {
         // 출금류 거래 삭제: 잔액에 해당 금액 추가
-        await manager.query(
-          `UPDATE portfolio_institution_balance
-             SET balance = balance + $4, updated_at = NOW()
-           WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3`,
-          [portfolio_id, institution_id, curId, amt],
+        await BalanceHelper.increaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          curId,
+          amt,
         );
       } else {
         throw new Error('Unsupported type');
@@ -633,11 +610,11 @@ export class CashRepository {
         new Set(txs.map((t) => t.currency_code_id)),
       );
       for (const curId of currencyIds) {
-        await manager.query(
-          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-           VALUES ($1,$2,$3,0)
-           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-          [portfolio_id, institution_id, curId],
+        await BalanceHelper.ensureBalanceRow(
+          manager,
+          portfolio_id,
+          institution_id,
+          curId,
         );
       }
 
@@ -647,22 +624,21 @@ export class CashRepository {
       for (const tx of txs) {
         const amt = Number(tx.amount);
         if (tx.type === 'exchange_out') {
-          await manager.query(
-            `UPDATE portfolio_institution_balance
-             SET balance = balance + $4, updated_at = NOW()
-             WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3`,
-            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          await BalanceHelper.increaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            tx.currency_code_id,
+            amt,
           );
         } else if (tx.type === 'exchange_in') {
-          const rows = await manager.query(
-            `UPDATE portfolio_institution_balance
-             SET balance = balance - $4, updated_at = NOW()
-             WHERE portfolio_id = $1 AND institution_id = $2 AND currency_code_id = $3
-               AND balance >= $4
-             RETURNING balance, updated_at`,
-            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          await BalanceHelper.decreaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            tx.currency_code_id,
+            amt,
           );
-          if (!rows?.length) throw new Error('Insufficient balance');
         }
       }
 
@@ -735,36 +711,35 @@ export class CashRepository {
       }
 
       // 2) 잔고 row 보장(기존/신규 통화 모두)
-      await manager.query(
-        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-       VALUES ($1,$2,$3,0)
-       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-        [portfolio_id, institution_id, oldCur],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        oldCur,
       );
-      await manager.query(
-        `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-       VALUES ($1,$2,$3,0)
-       ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-        [portfolio_id, institution_id, newCur],
+      await BalanceHelper.ensureBalanceRow(
+        manager,
+        portfolio_id,
+        institution_id,
+        newCur,
       );
 
       // 3) 기존 효과 롤백
       if (INCREASE.has(oldType)) {
-        const rows = await manager.query(
-          `UPDATE portfolio_institution_balance
-           SET balance = balance - $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-           AND balance >= $4
-         RETURNING id`,
-          [portfolio_id, institution_id, oldCur, oldAmt],
+        await BalanceHelper.decreaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          oldCur,
+          oldAmt,
         );
-        if (!rows?.length) throw new Error('Insufficient balance');
       } else if (DECREASE.has(oldType)) {
-        await manager.query(
-          `UPDATE portfolio_institution_balance
-           SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-          [portfolio_id, institution_id, oldCur, oldAmt],
+        await BalanceHelper.increaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          oldCur,
+          oldAmt,
         );
       } else {
         throw new Error('Unsupported type');
@@ -772,22 +747,21 @@ export class CashRepository {
 
       // 4) 새로운 효과 적용
       if (INCREASE.has(newType)) {
-        await manager.query(
-          `UPDATE portfolio_institution_balance
-       SET balance = balance + $4, updated_at = NOW()
-     WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-          [portfolio_id, institution_id, newCur, newAmt],
+        await BalanceHelper.increaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          newCur,
+          newAmt,
         );
       } else if (DECREASE.has(newType)) {
-        const rows = await manager.query(
-          `UPDATE portfolio_institution_balance
-       SET balance = balance - $4, updated_at = NOW()
-     WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-       AND balance >= $4
-     RETURNING id`,
-          [portfolio_id, institution_id, newCur, newAmt],
+        await BalanceHelper.decreaseBalance(
+          manager,
+          portfolio_id,
+          institution_id,
+          newCur,
+          newAmt,
         );
-        if (!rows?.length) throw new Error('Insufficient balance');
       }
 
       // 5) 거래내역 업데이트
@@ -858,11 +832,11 @@ export class CashRepository {
         new Set(existing.map((t) => t.currency_code_id)),
       );
       for (const curId of prevCurrencyIds) {
-        await manager.query(
-          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-           VALUES ($1,$2,$3,0)
-           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-          [portfolio_id, institution_id, curId],
+        await BalanceHelper.ensureBalanceRow(
+          manager,
+          portfolio_id,
+          institution_id,
+          curId,
         );
       }
 
@@ -871,23 +845,22 @@ export class CashRepository {
         const amt = Number(tx.amount);
         if (tx.type === 'exchange_out') {
           // out 삭제 → 잔고 가산
-          await manager.query(
-            `UPDATE portfolio_institution_balance
-             SET balance = balance + $4, updated_at = NOW()
-             WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3`,
-            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          await BalanceHelper.increaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            tx.currency_code_id,
+            amt,
           );
         } else if (tx.type === 'exchange_in') {
           // in 삭제 → 잔고 감산(가드)
-          const rows = await manager.query(
-            `UPDATE portfolio_institution_balance
-             SET balance = balance - $4, updated_at = NOW()
-             WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-               AND balance >= $4
-             RETURNING id`,
-            [portfolio_id, institution_id, tx.currency_code_id, amt],
+          await BalanceHelper.decreaseBalance(
+            manager,
+            portfolio_id,
+            institution_id,
+            tx.currency_code_id,
+            amt,
           );
-          if (!rows?.length) throw new Error('Insufficient balance');
         }
       }
 
@@ -976,11 +949,11 @@ export class CashRepository {
         new Set([from_currency_id, to_currency_id]),
       );
       for (const curId of newCurrencyIds) {
-        await manager.query(
-          `INSERT INTO portfolio_institution_balance (portfolio_id, institution_id, currency_code_id, balance)
-           VALUES ($1,$2,$3,0)
-           ON CONFLICT (portfolio_id, institution_id, currency_code_id) DO NOTHING`,
-          [portfolio_id, institution_id, curId],
+        await BalanceHelper.ensureBalanceRow(
+          manager,
+          portfolio_id,
+          institution_id,
+          curId,
         );
       }
 
@@ -1013,22 +986,20 @@ export class CashRepository {
       }
 
       // 9) 새 효과 적용: from 감소(가드) + to 증가
-      const decRows = await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance - $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-           AND balance >= $4
-         RETURNING balance, updated_at`,
-        [portfolio_id, institution_id, newOut.currency_id, newOut.amount],
+      await BalanceHelper.decreaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        newOut.currency_id,
+        newOut.amount as number,
       );
-      if (!decRows?.length) throw new Error('Insufficient balance');
 
-      await manager.query(
-        `UPDATE portfolio_institution_balance
-         SET balance = balance + $4, updated_at = NOW()
-         WHERE portfolio_id=$1 AND institution_id=$2 AND currency_code_id=$3
-         `,
-        [portfolio_id, institution_id, newIn.currency_id, newIn.amount],
+      await BalanceHelper.increaseBalance(
+        manager,
+        portfolio_id,
+        institution_id,
+        newIn.currency_id,
+        newIn.amount as number,
       );
 
       // 10) 평균환율 갱신
